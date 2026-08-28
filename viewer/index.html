@@ -18,7 +18,17 @@
 body{margin:0;background:var(--bg);color:var(--ink);
   font:14px/1.65 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard",system-ui,sans-serif;}
 button,input,select,textarea{font:inherit;color:inherit}
-#app{display:grid;grid-template-columns:250px 1fr 300px;grid-template-rows:44px 1fr;height:100vh}
+#app{display:grid;grid-template-columns:var(--sw,250px) 5px 1fr 5px var(--cw,300px);
+  grid-template-rows:44px 1fr;height:100vh}
+.rz{cursor:col-resize;background:var(--line);opacity:.35;transition:opacity .15s}
+.rz:hover,.rz.drag{opacity:1;background:var(--accent)}
+body.resizing{cursor:col-resize;user-select:none}
+#app.nos{grid-template-columns:0 5px 1fr 5px var(--cw,300px)}
+#app.noc{grid-template-columns:var(--sw,250px) 5px 1fr 5px 0}
+#app.nos.noc{grid-template-columns:0 5px 1fr 5px 0}
+/* 접을 때 display:none 을 쓰면 그리드 아이템이 앞 칼럼으로 밀린다.
+   칼럼 폭만 0 으로 두고 내용은 잘라낸다. */
+#app.nos #side,#app.noc #cart{overflow:hidden;border:none}
 header{grid-column:1/-1;display:flex;align-items:center;gap:4px;padding:0 12px;
   background:var(--panel);border-bottom:1px solid var(--line)}
 header .brand{font-weight:700;margin-right:12px;letter-spacing:-.3px}
@@ -26,12 +36,24 @@ header .sp{flex:1}
 .tab{padding:5px 13px;border:1px solid transparent;border-radius:7px;background:none;cursor:pointer;color:var(--dim)}
 .tab:hover{background:var(--bg)}
 .tab.on{background:var(--bg);border-color:var(--line);color:var(--ink);font-weight:600}
+.sep{width:1px;height:18px;background:var(--line);margin:0 5px}
+.grouplbl{font-size:11px;font-weight:700;color:var(--dim);letter-spacing:.4px;margin-right:2px}
+.blk{margin:0 0 12px}
+.blk label{display:block;font-weight:700;font-size:13px;margin-bottom:3px}
+.blk .hint{font-weight:400;color:var(--dim);font-size:12px;margin-left:6px}
+.blk textarea{min-height:56px}
+.cnt{font-family:var(--mono);font-size:12px;color:var(--dim)}
 #side,#cart{background:var(--panel);overflow:auto}
 #side{border-right:1px solid var(--line)}
 #cart{border-left:1px solid var(--line);display:flex;flex-direction:column}
 main{overflow:auto;padding:22px 30px}
 .muted{color:var(--dim)}
-.grp{padding:9px 12px 3px;font-size:11px;font-weight:700;color:var(--dim);letter-spacing:.6px}
+.grp{padding:9px 12px 3px;font-size:11px;font-weight:700;color:var(--dim);letter-spacing:.6px;
+  cursor:pointer;user-select:none;display:flex;align-items:center;gap:4px}
+.grp:hover{color:var(--ink)}
+.grp .ar{display:inline-block;transition:transform .15s;font-size:9px}
+.grp.fold .ar{transform:rotate(-90deg)}
+.grp .n{margin-left:auto;font-weight:400;opacity:.6}
 .f{display:flex;align-items:center;gap:6px;padding:4px 12px;cursor:pointer;font-size:13px;
   border-left:2px solid transparent}
 .f:hover{background:var(--bg)}
@@ -95,7 +117,7 @@ textarea{width:100%;min-height:130px;padding:11px;border:1px solid var(--line);b
   color:var(--bg);padding:8px 18px;border-radius:20px;font-size:13px;opacity:0;
   transition:opacity .2s;pointer-events:none;z-index:99}
 .toast.on{opacity:1}
-@media(max-width:1000px){#app{grid-template-columns:1fr}#side,#cart{display:none}}
+@media(max-width:1000px){#app{grid-template-columns:1fr}#side,#cart,.rz{display:none}}
 </style>
 </head>
 <body>
@@ -103,14 +125,24 @@ textarea{width:100%;min-height:130px;padding:11px;border:1px solid var(--line);b
   <header>
     <div class="brand">character</div>
     <button class="tab on" data-t="read">읽기</button>
+    <span class="sep"></span>
+    <span class="grouplbl">이미지</span>
     <button class="tab" data-t="tag">태그</button>
     <button class="tab" data-t="build">조립</button>
     <button class="tab" data-t="check">검토</button>
+    <span class="sep"></span>
+    <span class="grouplbl">챗봇</span>
+    <button class="tab" data-t="write">작성</button>
+    <button class="tab" data-t="bcheck">검토</button>
     <div class="sp"></div>
+    <button class="tab" id="tgS" title="파일 목록 접기/펼치기">◧</button>
+    <button class="tab" id="tgC" title="담은 태그 접기/펼치기">◨</button>
     <span class="muted" id="stat">불러오는 중…</span>
   </header>
   <nav id="side"></nav>
+  <div class="rz" id="rzL" title="드래그로 너비 조절 · 더블클릭으로 접기"></div>
   <main id="main"></main>
+  <div class="rz" id="rzR" title="드래그로 너비 조절 · 더블클릭으로 접기"></div>
   <aside id="cart">
     <div class="head">
       <strong>담은 태그</strong><span class="muted" id="cn">0</span>
@@ -280,17 +312,29 @@ async function boot(){
 }
 
 /* ── 사이드바 ───────────────────────────────── */
+const foldKey='char.fold';
+let FOLD = (()=>{ try{ return new Set(JSON.parse(localStorage.getItem(foldKey))||[]); }catch{ return new Set(); } })();
+const foldSave=()=>localStorage.setItem(foldKey,JSON.stringify([...FOLD]));
+
 function drawSide(){
   const groups={};
   for(const f of S.files){ const g=f.includes('/')?f.split('/')[0]:'· 루트'; (groups[g] ||= []).push(f); }
-  $('#side').innerHTML = Object.keys(groups).sort().map(g=>
-    `<div class="grp">${esc(g)}</div>`+groups[g].map(f=>{
-      const grade = f.endsWith('.csv') ? 'csv' : (gradeOf(S.md[f]||'')||'작업');
-      const name = f.split('/').slice(1).join('/') || f;
-      return `<div class="f${S.cur===f?' on':''}" data-f="${esc(f)}" title="${esc(f)}">
-        <i class="dot ${grade}"></i><span>${esc(name)}</span></div>`;
-    }).join('')).join('');
-  $('#side').onclick = e => { const el=e.target.closest('.f'); if(el){ setTab('read'); show(el.dataset.f); } };
+  $('#side').innerHTML = Object.keys(groups).sort().map(g=>{
+    const fold=FOLD.has(g);
+    return `<div class="grp${fold?' fold':''}" data-g="${esc(g)}">
+        <span class="ar">▼</span>${esc(g)}<span class="n">${groups[g].length}</span></div>`
+      + (fold?'':groups[g].map(f=>{
+          const grade = f.endsWith('.csv') ? 'csv' : (gradeOf(S.md[f]||'')||'작업');
+          const name = f.split('/').slice(1).join('/') || f;
+          return `<div class="f${S.cur===f?' on':''}" data-f="${esc(f)}" title="${esc(f)}">
+            <i class="dot ${grade}"></i><span>${esc(name)}</span></div>`;
+        }).join(''));
+  }).join('');
+  $('#side').onclick = e => {
+    const g=e.target.closest('.grp');
+    if(g){ const k=g.dataset.g; FOLD.has(k)?FOLD.delete(k):FOLD.add(k); foldSave(); drawSide(); return; }
+    const el=e.target.closest('.f'); if(el){ setTab('read'); show(el.dataset.f); }
+  };
 }
 
 /* ── 읽기 ───────────────────────────────────── */
@@ -437,7 +481,133 @@ function drawBuild(){
   $('#cNeg').onclick=()=>copy(assemble().neg,'부정 프롬프트');
 }
 
-/* ── 검토 (05_검토/02 A·B절 기계 판정) ───────── */
+/* ── 챗봇 작성 (하네스 8블록) ────────────────── */
+const BLOCKS = [
+ ['고정 설정','② Anchor · 최상단 고정 · 3줄 이내','핵심: 이 캐릭터를 이 캐릭터답게 만드는 것. 지웠을 때 다른 캐릭터가 되는가?'],
+ ['기본 정보','① Block','이름 · 나이 · 직업 · 외형'],
+ ['성격 및 말투','① Block','평소 어투 · 말버릇 · 어휘 특징'],
+ ['상황별 반응','③ Trigger · 조건 → 반응 · 최소 5개','{{user}}가 도발하면 → 냉소적으로 반응하되 적대적으로 굴지는 않음'],
+ ['금지 행동','④ Guard · 어떤 상황에서도 안 하는 것','~하지 않는다 형태로'],
+ ['기본 행동','⑤ Fallback · 조건이 없을 때','기본 어조 · 답변 길이 · 먼저 하지 않는 것'],
+ ['인식 범위','⑥ Scope · 아는 것 / 모르는 것','{{user}}의 과거를 모른다 · 세계관 외부 정보는 인식하지 않는다'],
+ ['관계 단계','⑦ Chain · 관계 변화 흐름','첫 대화 → / n회 이상 → / 신뢰 이후 →'],
+ ['출력 규칙','⑧ Layer · 메타 영역 · 대사에 섞이지 않게','{{user}}의 대사나 행동을 대신 묘사하지 말 것'],
+];
+const botKey='char.bot';
+const botLoad=()=>{ try{ return JSON.parse(localStorage.getItem(botKey))||{}; }catch{ return {}; } };
+const botSave=o=>localStorage.setItem(botKey,JSON.stringify(o));
+function botAssemble(d){
+  return BLOCKS.map(([n])=>{
+    const v=(d[n]||'').trim();
+    return v ? `[${n}]\n${v}` : '';
+  }).filter(Boolean).join('\n\n');
+}
+function drawWrite(){
+  const d=botLoad();
+  $('#main').innerHTML=`<div class="bar">
+      <strong>하네스 8블록</strong>
+      <span class="muted">순서가 곧 우선순위 · Anchor 를 맨 위에</span>
+      <span class="sp" style="flex:1"></span>
+      <span class="cnt" id="wcnt"></span>
+      <button class="btn pri" id="wcopy">프롬프트 복사</button>
+      <button class="btn" id="wclear">비우기</button>
+    </div>
+    ${BLOCKS.map(([n,role,ph])=>`<div class="blk">
+      <label>${esc(n)}<span class="hint">${esc(role)}</span></label>
+      <textarea data-b="${esc(n)}" placeholder="${esc(ph)}">${esc(d[n]||'')}</textarea>
+    </div>`).join('')}
+    <h3>조립 결과</h3><pre id="wout"></pre>`;
+  const sync=()=>{
+    const o={}; document.querySelectorAll('#main textarea[data-b]').forEach(t=>o[t.dataset.b]=t.value);
+    botSave(o); const out=botAssemble(o);
+    $('#wout').textContent=out||'—';
+    const ch=out.length, ko=(out.match(/[가-힣]/g)||[]).length;
+    $('#wcnt').textContent=`${ch.toLocaleString()}자 · 한글 ${ko.toLocaleString()}`;
+  };
+  document.querySelectorAll('#main textarea[data-b]').forEach(t=>t.oninput=sync);
+  $('#wcopy').onclick=()=>copy(botAssemble(botLoad()),'프롬프트');
+  $('#wclear').onclick=()=>{ if(confirm('작성 내용을 모두 비울까요?')){ botSave({}); drawWrite(); } };
+  sync();
+}
+
+/* ── 챗봇 검토 (05_검토/01 A·B절 기계 판정) ──── */
+function drawBotCheck(){
+  $('#main').innerHTML=`<div class="bar"><strong>챗봇 프롬프트 검토</strong>
+      <span class="muted">05_검토/01 의 A절(형식)과 B절(블록 유무)을 판정합니다</span>
+      <span class="sp" style="flex:1"></span>
+      <button class="btn" id="bload">작성 탭에서 가져오기</button></div>
+    <textarea id="bin" placeholder="프롬프트를 붙여넣으세요"></textarea>
+    <div class="bar" style="margin-top:10px"><button class="btn pri" id="bgo">검사</button>
+      <span class="muted">C절 밀도는 판단이 필요해 Claude 에게 맡기세요</span></div>
+    <div id="brep"></div>`;
+  $('#bload').onclick=()=>{ $('#bin').value=botAssemble(botLoad()); };
+  $('#bgo').onclick=()=>{
+    const t=$('#bin').value;
+    const R=(ok,title,body)=>`<div class="res ${ok?'ok':'no'}"><strong>${title}</strong>${body?'<br>'+body:''}</div>`;
+    const N=(title,body)=>`<div class="res"><strong>${title}</strong>${body?'<br>'+body:''}</div>`;
+
+    /* A1 형식 혼용 */
+    const fm=[];
+    if(/^\s*<\w+>/m.test(t)&&/<\/\w+>/.test(t)) fm.push('XML');
+    if(/^#{1,6}\s+\S/m.test(t)) fm.push('Markdown');
+    if(/^\s{2,}\w[\w-]*:\s*\S/m.test(t)) fm.push('YAML');
+    if(/^\w[\w ]*\s=\s\S/m.test(t)) fm.push('INI');
+    if(/^\[[^\]]+\]\s*$/m.test(t)) fm.push('블록([ ])');
+
+    /* A2 언어 혼용 — 줄 단위로 어느 문자가 주도하는지 */
+    const lines=t.split('\n').filter(l=>l.trim().length>8);
+    let ko=0,en=0,zh=0;
+    for(const l of lines){
+      const k=(l.match(/[가-힣]/g)||[]).length,
+            e=(l.match(/[A-Za-z]/g)||[]).length,
+            c=(l.match(/[\u4e00-\u9fff]/g)||[]).length;
+      const m=Math.max(k,e,c); if(!m) continue;
+      if(m===k) ko++; else if(m===c) zh++; else en++;
+    }
+    const langs=[['한국어',ko],['영어',en],['중국어',zh]].filter(([,n])=>n/Math.max(lines.length,1)>0.15);
+
+    /* A3 OOC · A4 유저 지칭 */
+    const ooc=/\bOOC\b/i.test(t);
+    const uu=(t.match(/\{\{user\}\}/g)||[]).length;
+    const alt=[...new Set((t.match(/유저|사용자|당신|그대/g)||[]))];
+
+    /* A5 메타 헤더 · A6 코드블록 */
+    const meta=['플랫폼','언어','형식','글자수','토큰'].filter(k=>new RegExp('^\\s*'+k+'\\s*[:：]','m').test(t));
+
+    /* B 하네스 블록 */
+    const found=BLOCKS.map(([n])=>[n, new RegExp('\\[\\s*'+n+'\\s*\\]').test(t)]);
+    const missB=found.filter(([,v])=>!v).map(([n])=>n);
+    const trg=(t.match(/→/g)||[]).length;
+
+    const ch=t.length, koc=(t.match(/[가-힣]/g)||[]).length;
+    const est=Math.round(koc*1.4 + (ch-koc)*0.3);
+
+    $('#brep').innerHTML=`<h3>결과</h3>`
+      + R(fm.length<=1, `A1 형식 — ${fm.length?fm.join(' · '):'감지 안 됨'}`,
+          fm.length>1?'<span class="muted">한 프롬프트 칸 안에서는 하나로 통일합니다. Claude 계열이면 XML 이 유리합니다.</span>':'')
+      + R(langs.length<=1, `A2 언어 — ${langs.map(([n,c])=>n+' '+c+'줄').join(' · ')||'판정 불가'}`,
+          langs.length>1?'<span class="muted">문맥 이탈·엉뚱한 언어 답변의 직접 원인입니다. 한 칸 안에서는 통일하세요.</span>':'')
+      + R(!ooc, `A3 OOC 표기 — ${ooc?'발견':'없음'}`,
+          ooc?'<span class="muted">몰입이 깨지고 메타 발언을 학습합니다. <code>[출력 규칙]</code> 으로 옮기세요.</span>':'')
+      + R(uu>0 && !alt.length, `A4 유저 지칭 — {{user}} ${uu}회${alt.length?' · 다른 표기 '+alt.join(', '):''}`,
+          alt.length ? '<span class="muted">'+(uu?'혼재하면 AI가 다른 인물로 해석합니다. ':'{{user}} 대신 다른 표기를 쓰고 있습니다. ')+'플랫폼 표기법으로 통일하세요.</span>'
+          : (uu?'':'<span class="muted">{{user}} 지칭이 없습니다. 유저를 부르는 자리가 정말 없는지 확인하세요.</span>'))
+      + R(meta.length>=3, `A5 메타 헤더 — ${meta.length?meta.join(' · '):'없음'}`,
+          meta.length<3?'<span class="muted">플랫폼 · 언어 · 형식 · 글자수/토큰을 맨 위에 적어두면 나중에 옮길 때 편합니다.</span>':'')
+      + R(!missB.length, `B 하네스 블록 — ${9-missB.length}/9`,
+          missB.length?missB.map(n=>`<code>[${esc(n)}]</code>`).join(' ')
+            +'<br><span class="muted">없는 블록입니다. 증상↔블록 대응은 <code>05_검토/01</code> 하단 표.</span>':'')
+      + R(trg>=5, `B ③ Trigger — 조건 → 반응 ${trg}개`,
+          trg<5?'<span class="muted">최소 5개를 권합니다. 형용사 한 줄("냉소적이다")은 트리거가 아닙니다.</span>':'')
+      + N(`분량 — ${ch.toLocaleString()}자 (한글 ${koc.toLocaleString()})`,
+          `<span class="muted">대략 ${est.toLocaleString()} 토큰 추정. 플랫폼이 글자수제면 자릿수만 보고,
+           토큰제면 <code>04_생성기/02</code> 로 영문 변환을 검토하세요.</span>`)
+      + N('C 밀도 — 기계 판정 불가',
+          '<span class="muted">고도·고신호 최소 집합·로어북 이관은 판단이 필요합니다. 터미널에서 Claude 에게 <code>05_검토/01</code> 의 C절로 봐달라고 하세요.</span>');
+  };
+}
+
+/* ── 이미지 검토 (05_검토/02 A·B절 기계 판정) ── */
 function drawCheck(){
   $('#main').innerHTML = `<div class="bar"><strong>이미지 프롬프트 검토</strong>
     <span class="muted">05_검토/02 의 A·B절을 사전 대조로 판정합니다</span></div>
@@ -507,7 +677,8 @@ function drawCheck(){
 /* ── 공통 ───────────────────────────────────── */
 function setTab(t){
   S.tab=t; document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
-  ({read:()=>show(S.cur||S.files[0]), tag:drawTag, build:drawBuild, check:drawCheck})[t]();
+  ({read:()=>show(S.cur||S.files[0]), tag:drawTag, build:drawBuild, check:drawCheck,
+    write:drawWrite, bcheck:drawBotCheck})[t]();
 }
 function copy(text,label){
   navigator.clipboard.writeText(text).then(()=>toast((label||'')+' 복사됨'),()=>toast('복사 실패'));
@@ -515,7 +686,44 @@ function copy(text,label){
 let tt; function toast(m){ const e=$('#toast'); e.textContent=m; e.classList.add('on');
   clearTimeout(tt); tt=setTimeout(()=>e.classList.remove('on'),1300); }
 
-document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>setTab(b.dataset.t));
+/* ── 패널 너비 · 접기 ─────────────────────────── */
+const app=$('#app'), LS={sw:'char.sw', cw:'char.cw', ps:'char.ps'};
+(function initPanels(){
+  const sw=localStorage.getItem(LS.sw), cw=localStorage.getItem(LS.cw);
+  if(sw) app.style.setProperty('--sw',sw);
+  if(cw) app.style.setProperty('--cw',cw);
+  try{ const st=JSON.parse(localStorage.getItem(LS.ps))||{};
+    if(st.s) app.classList.add('nos'); if(st.c) app.classList.add('noc'); }catch{}
+})();
+const savePanels=()=>localStorage.setItem(LS.ps,
+  JSON.stringify({s:app.classList.contains('nos'),c:app.classList.contains('noc')}));
+
+function drag(el, which){
+  el.onmousedown = e => {
+    e.preventDefault();
+    const side = which==='sw';
+    if(side && app.classList.contains('nos')){ app.classList.remove('nos'); savePanels(); }
+    if(!side && app.classList.contains('noc')){ app.classList.remove('noc'); savePanels(); }
+    el.classList.add('drag'); document.body.classList.add('resizing');
+    const move = ev => {
+      const w = side ? ev.clientX : window.innerWidth - ev.clientX;
+      const v = Math.max(150, Math.min(560, w)) + 'px';
+      app.style.setProperty('--'+which, v);
+      localStorage.setItem(LS[which], v);
+    };
+    const up = () => {
+      el.classList.remove('drag'); document.body.classList.remove('resizing');
+      removeEventListener('mousemove',move); removeEventListener('mouseup',up);
+    };
+    addEventListener('mousemove',move); addEventListener('mouseup',up);
+  };
+  el.ondblclick = () => { app.classList.toggle(which==='sw'?'nos':'noc'); savePanels(); };
+}
+drag($('#rzL'),'sw'); drag($('#rzR'),'cw');
+$('#tgS').onclick=()=>{ app.classList.toggle('nos'); savePanels(); };
+$('#tgC').onclick=()=>{ app.classList.toggle('noc'); savePanels(); };
+
+document.querySelectorAll('.tab[data-t]').forEach(b=>b.onclick=()=>setTab(b.dataset.t));
 $('#clear').onclick=()=>{ if(S.cart.length && confirm('담은 태그를 모두 비울까요?')){ S.cart=[]; saveCart(); } };
 boot();
 </script>

@@ -317,7 +317,7 @@ crontab 예시 — 매일 오전 8시 daily, 일요일 새벽 4시 sweep:
 
 ```cron
 0 8 * * *  ./run.sh daily
-0 4 * * 0  cd /Users/minnoh/Documents/gitsource/character && ./run.sh sweep
+0 4 * * 0  cd ~/Documents/gitsource/character && ./run.sh sweep
 ```
 
 `PATH` 에 node 가 없을 수 있으니 crontab 상단에 `PATH=/usr/local/bin:/usr/bin:/bin:$HOME/.nvm/versions/node/<버전>/bin` 를 넣어둘 것.
