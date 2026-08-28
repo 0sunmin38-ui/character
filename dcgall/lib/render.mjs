@@ -282,7 +282,14 @@ main{padding:18px 28px 90px;max-width:1080px;margin:0 auto}
 #prog i{display:block;height:100%;background:#fff;width:0;transition:width .3s}
 
 /* ── 사전 패널 ───────────────────────────────────────────── */
-#crawlPanel,#glPanel{max-width:1080px;margin:16px auto 0;padding:0 28px}
+#crawlPanel,#glPanel,#exportPanel{max-width:1080px;margin:16px auto 0;padding:0 28px}
+.job{display:block;width:100%;text-align:left;border:1px solid var(--line);background:var(--sunken);
+ border-radius:9px;padding:11px 13px;margin-bottom:7px;cursor:pointer;color:var(--ink);font:inherit;transition:.12s}
+.job:hover{border-color:var(--accent);background:var(--accent-w)}
+.job b{display:block;font-size:13px;margin-bottom:3px;font-weight:600}
+.job b .g{font-weight:400;color:var(--dim);font-size:11.5px}
+.job span{font-size:11.5px;color:var(--dim);line-height:1.55}
+.job:disabled{opacity:.5;cursor:default}
 .pbar{height:7px;background:var(--sunken);border-radius:99px;overflow:hidden;margin:10px 0 7px;border:1px solid var(--line)}
 .pbar i{display:block;height:100%;background:var(--accent);width:0;transition:width .3s}
 .jobseg{margin-bottom:11px}
@@ -570,7 +577,7 @@ ${CSS}</style></head><body>
   ${gnbHtml('collect', meta.server,
     '<span class="stat" id="storage"></span>' +
     '<button class="ctl primary" id="crawlBtn" title="갤러리에서 새 글을 가져와요"><span class="e">⟳</span><span class="t">새로 수집</span></button>' +
-    '<button class="ctl" id="export" title="내가 고친 분류를 labels.json 으로 내려받아요"><span class="e">↓</span><span class="t">분류 내보내기</span></button>')}
+    '<button class="ctl" id="export" title="모아둔 글을 파일로 내려받아요"><span class="e">↓</span><span class="t">내보내기</span></button>')}
   <div class="hdr-tools">
   <div class="hdr-row search-row">
     <label class="search"><span class="ico">⌕</span>
@@ -610,6 +617,7 @@ ${CSS}</style></head><body>
   </div>
 </header>
 
+<section id="exportPanel" hidden></section>
 <section id="crawlPanel" hidden></section>
 <main id="list"></main>
 <div id="toast"></div>
@@ -686,258 +694,68 @@ function setLabel(no, cat){
   renderCats(); render();
 }
 
-document.getElementById('export').addEventListener('click', function(){
-  var out = {version:1, updated_at:new Date().toISOString(), manual:{}};
-  posts.forEach(function(p){ if(p.ml) out.manual[p.no] = pending[p.no] || {category:p.ml, by:'viewer', at:new Date().toISOString()}; });
-  var blob = new Blob([JSON.stringify(out,null,2)], {type:'application/json'});
-  var a = document.createElement('a');
-  a.href = URL.createObjectURL(blob); a.download = 'labels.json'; a.click();
-  toast('labels.json 을 내려받았어요. node dcgall/classify.mjs --import <파일> 로 반영해 주세요.');
-});
+var exportOpen = false;
+var EXPORTS = [
+  {kind:'md',   name:'마크다운 묶음',   ext:'zip',   desc:'글마다 .md 파일로 만들어 분류별 폴더에 담아 zip 하나로. 옵시디언 같은 데 넣어 읽기 좋아요.'},
+  {kind:'md-lib',name:'마크다운 (서재만)',ext:'zip', desc:'서재에 담아둔 글만 같은 형식으로. 원문이 지워진 글도 보존본에서 꺼내와요.'},
+  {kind:'full', name:'데이터셋',        ext:'jsonl', desc:'글 하나가 한 줄인 JSONL. 본문·댓글·원문 주소까지. 직접 분석할 때.'},
+  {kind:'meta', name:'데이터셋 (요약)',  ext:'jsonl', desc:'제목·날짜·지표·분류만. 통계 낼 때 가볍게.'},
+  {kind:'labels',name:'분류 라벨',      ext:'json',  desc:'내가 직접 고친 분류만. 다른 기기에 옮길 때 classify.mjs --import 로 넣어요.'}
+];
 
-/* ---------- 다중 선택 ---------- */
-var SEL = new Set();
-var lastIdx = null;      // shift 범위 선택용
-var visible = [];        // 현재 화면에 렌더된 순서
-
-function syncSel(){
-  document.getElementById('selN').textContent = SEL.size;
-  document.getElementById('selbar').classList.toggle('show', SEL.size > 0);
-}
-
-function toggleSel(no, on){
-  if (on) SEL.add(no); else SEL.delete(no);
-  var card = document.querySelector('.sel[data-no="'+no+'"]');
-  if (card) card.closest('.card').classList.toggle('picked', on);
-  syncSel();
-}
-
-// 로우 어디를 눌러도 선택된다. 제목(펼치기)·드롭다운(분류)·링크(원문)·본문 영역만 예외.
-var NOSEL = '.ttl,.pick,a,input,textarea,select,button,.body';
-document.getElementById('list').addEventListener('click', function(e){
-  var card = e.target.closest('.card'); if(!card) return;
-  var onBox = !!e.target.closest('.sel');
-  if (!onBox && e.target.closest(NOSEL)) return;
-  var cb = card.querySelector('.sel'); if(!cb) return;
-  var no = Number(cb.dataset.no), idx = visible.indexOf(no);
-  var want = onBox ? cb.checked : !SEL.has(no);
-  if (!onBox) cb.checked = want;
-  if (e.shiftKey && lastIdx !== null && idx >= 0) {
-    var a = Math.min(lastIdx, idx), b = Math.max(lastIdx, idx);
-    for (var i = a; i <= b; i++) toggleSel(visible[i], want);
-  } else {
-    toggleSel(no, want);
-  }
-  lastIdx = idx;
-});
-
-document.getElementById('selAll').addEventListener('click', function(){
-  visible.forEach(function(no){ SEL.add(no) });
-  render(); syncSel();
-});
-document.getElementById('selNone').addEventListener('click', function(){
-  SEL.clear(); lastIdx = null; render(); syncSel();
-});
-
-document.getElementById('selCat').addEventListener('change', function(e){
-  var cat = e.target.value; if(!cat) return;
-  e.target.value = '';
-  if (!meta.server) { toast('서버 모드에서만 바꿀 수 있어요. node dcgall/serve.mjs 로 실행해 주세요.', true); return; }
-  var nos = [].concat(Array.from(SEL));
-  var manual = {}, now = new Date().toISOString();
-  nos.forEach(function(no){ manual[no] = {category:cat, by:'bulk', at:now} });
-  fetch('/api/labels', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({manual:manual})})
-    .then(function(r){ return r.json() })
-    .then(function(){
-      posts.forEach(function(p){ if (SEL.has(p.no)) p.ml = cat });
-      toast(nos.length+'건을 '+CAT[cat].label+' 로 바꿨어요.');
-      renderCats(); render();
-    })
-    .catch(function(err){ toast('바꾸지 못했어요: '+err.message, true) });
-});
-
-var pollH = null;
-function poll(){
-  fetch('/api/queue').then(function(r){ return r.json() }).then(function(j){
-    var bar = document.getElementById('prog'), txt = document.getElementById('progTxt');
-    if (j.running || j.pending) {
-      bar.classList.add('show');
-      document.getElementById('selStop').style.display = '';
-      var pct = j.total ? Math.round(j.done / j.total * 100) : 0;
-      bar.querySelector('i').style.width = pct + '%';
-      txt.textContent = '보존 ' + j.done + '/' + j.total
-        + (j.current ? ' · ' + String(j.current.title).slice(0,22) : '')
-        + (j.errors.length ? ' · 실패 ' + j.errors.length : '');
-    } else {
-      bar.classList.remove('show');
-      document.getElementById('selStop').style.display = 'none';
-      if (pollH) {
-        clearInterval(pollH); pollH = null;
-        txt.textContent = j.total ? '보존 완료 ' + j.done + '건' + (j.errors.length ? ' (실패 '+j.errors.length+')' : '') : '';
-        toast('보존을 마쳤어요 · ' + j.done + '건' + (j.errors.length ? ' (실패 '+j.errors.length+'건)' : ''));
-      }
-    }
-  }).catch(function(){});
-}
-
-document.getElementById('selBk').addEventListener('click', function(){
-  if (!meta.server) { toast('서버 모드에서만 담을 수 있어요. 터미널에서 node dcgall/serve.mjs 로 실행해 주세요.', true); return; }
-  var nos = Array.from(SEL); if (!nos.length) return;
-  if (nos.length > 30 && !confirm(nos.length+'건을 보존할까요?\n글마다 몇 초씩 걸려서 대략 '
-      + Math.ceil(nos.length*5/60) + '분 정도 소요돼요.')) return;
-  fetch('/api/bookmark/bulk', {method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({nos:nos, on:true})})
-    .then(function(r){ return r.json() })
-    .then(function(j){
-      if (j.error) throw new Error(j.error);
-      posts.forEach(function(p){ if (SEL.has(p.no)) p.bk = 1 });
-      meta.bookmarkCount = j.count;
-      document.getElementById('storage').textContent = '서재 ' + j.count + '건';
-      toast(j.added+'건을 서재에 담았어요. '+j.queued+'건은 순서대로 보존 중이에요.');
-      SEL.clear(); lastIdx = null; render(); syncSel();
-      if (j.queued && !pollH) { poll(); pollH = setInterval(poll, 1200); }
-    })
-    .catch(function(err){ toast('처리하지 못했어요: '+err.message, true) });
-});
-
-document.getElementById('selStop').addEventListener('click', function(){
-  fetch('/api/queue/stop', {method:'POST'}).then(function(){ toast('남은 보존 작업을 중단했어요.') });
-});
-
-/* ---------- 수집 패널 ---------- */
-var crawlOpen = false, crawlPoll = null, JOBS = [], crawlJob = 'daily';
-var WATCH = {keywords:[], scope:'both', pages:2, expanded:0, concepts:[], preview:{}};
-
-var JOBNAME = {daily:'매일 가볍게', sweep:'가끔 몰아서', watch:'키워드로 찾기'};
-
-function renderCrawl(st){
-  var el = document.getElementById('crawlPanel');
-  if (!crawlOpen) { el.hidden = true; return; }
+function renderExport(){
+  var el = document.getElementById('exportPanel');
+  if (!exportOpen) { el.hidden = true; return; }
   el.hidden = false;
-
-  // 진행 중이면 진행 상황만 보여준다
-  if (st && st.running) {
-    var pct = st.total ? Math.round(st.done / st.total * 100) : 0;
-    el.innerHTML = '<div class="glbox"><h3>수집 중</h3>'
-      + '<div><b>' + esc(JOBNAME[st.job] || st.job) + '</b>, '
-      + (st.phase === 'list' ? '목록' : '본문') + ' ' + st.done + '/' + st.total + '</div>'
-      + '<div class="pbar"><i style="width:' + pct + '%"></i></div>'
-      + '<div class="metrics">' + esc(st.label || '') + '</div>'
-      + '<div class="plog">' + esc((st.logs || []).join('\n')) + '</div>'
-      + '<div style="margin-top:11px"><button class="ctl" id="crawlStop">중단</button></div></div>';
-    return;
-  }
-
-  var job = JOBS.filter(function(j){ return j.key === crawlJob })[0] || JOBS[0];
-  var h = '<div class="glbox"><h3>새 글 수집</h3>'
-    + '<div class="seg jobseg">' + JOBS.map(function(j){
-        return '<button data-job="'+esc(j.key)+'"'+(j.key===crawlJob?' class="on"':'')+'>'
-          + esc(JOBNAME[j.key] || j.key) + '</button>' }).join('') + '</div>'
-    + '<p class="d jobdesc">' + esc(job ? job.desc : '') + '</p>';
-
-  // 옵션: 키워드로 찾기일 때만 감시 목록을 편집한다
-  if (crawlJob === 'watch') {
-    h += '<div class="kwbox"><div class="kwhead">감시할 키워드 '
-       + '<span class="g">'+WATCH.keywords.length+'개, 실제 검색어 '+WATCH.expanded+'개</span></div>'
-       + '<div class="tagbar">'
-       + WATCH.keywords.map(function(k){
-           if (k.indexOf('@') !== 0)
-             return '<span class="tag" data-kw="'+esc(k)+'">'+esc(k)+'<span class="x">×</span></span>';
-           var c = WATCH.concepts.filter(function(x){ return x.ref===k })[0];
-           return '<span class="tag ref" data-kw="'+esc(k)+'" title="'+esc((WATCH.preview[k]||[]).join(', '))+'">사전 · '
-             + esc(c?c.label:k)+' <span class="g">'+(WATCH.preview[k]||[]).length+'</span><span class="x">×</span></span>';
-         }).join('')
-       + '<input class="tagin" id="kwAdd" placeholder="+ 키워드 (Enter)"></div>'
-       + '<div class="kwopt"><label>사전에서 넣기'
-       + '<select id="kwConcept"><option value="">개념 묶음 고르기…</option>'
-       + WATCH.concepts.filter(function(c){ return WATCH.keywords.indexOf(c.ref)<0 })
-           .map(function(c){ return '<option value="'+esc(c.ref)+'">'+esc(c.label)+' ('+c.n+'개)</option>' }).join('')
-       + '</select></label>'
-       + '<label>찾는 범위<select id="kwScope">'
-       + '<option value="both"'+(WATCH.scope==='both'?' selected':'')+'>제목+본문</option>'
-       + '<option value="title"'+(WATCH.scope==='title'?' selected':'')+'>제목만</option></select></label>'
-       + '<label>키워드당 <select id="kwPages">'
-       + [1,2,3,5].map(function(n){ return '<option value="'+n+'"'+(WATCH.pages===n?' selected':'')+'>'+n+'쪽</option>' }).join('')
-       + '</select></label>'
-       + '<span class="g">요청 '+(WATCH.expanded*WATCH.pages)+'회, 약 '
-       + Math.ceil(WATCH.expanded*WATCH.pages*1.5/60)+'분</span></div></div>';
-  }
-
-  h += '<div class="runrow"><button class="ctl primary" id="crawlRun">실행</button>';
-  if (st && st.result) {
-    var r = st.result;
-    h += r.error
-      ? '<span class="why">수집하지 못했어요: ' + esc(r.error) + '</span>'
-      : '<span class="why">직전 실행 <b>' + esc(r.runId) + '</b>, 수집 ' + r.seen + '건, 새 글 <b>' + r.added
-        + '</b>건, 본문 ' + r.details + '건' + (r.errors ? ', 실패 ' + r.errors + '건' : '')
-        + (r.stopped ? ' (중단됨)' : '')
-        + (r.added ? '  <a href="#" id="reloadAfter">새로고침해서 반영하기</a>' : '') + '</span>';
-  }
-  h += '</div>';
-  el.innerHTML = h + '</div>';
+  var edited = posts.filter(function(p){ return p.ml }).length;
+  el.innerHTML = '<div class="glbox"><h3>내보내기</h3>'
+    + '<p class="d">모아둔 글을 파일로 받아요. 받은 파일은 이 도구가 다시 읽지는 않아요. 읽거나 보관하거나 남에게 줄 때 쓰세요.</p>'
+    + EXPORTS.map(function(x){
+        var n = x.kind==='labels' ? edited+'건' : (x.kind==='md-lib' ? meta.bookmarkCount+'건' : posts.length+'건');
+        return '<button class="job" data-kind="'+x.kind+'"><b>'+esc(x.name)
+          + ' <span class="g">'+n+' · .'+x.ext+'</span></b><span>'+esc(x.desc)+'</span></button>';
+      }).join('')
+    + '<p class="d" style="margin:12px 0 0">작성자 이름과 고유 id 는 어느 형식에도 들어가지 않아요.</p></div>';
 }
 
-function pollCrawl(){
-  fetch('/api/crawl').then(function(r){ return r.json() }).then(function(st){
-    JOBS = st.jobs || JOBS;
-    if (st.watch) WATCH = st.watch;
-    renderCrawl(st);
-    document.getElementById('crawlBtn').disabled = !!st.running;
-    if (st.running && !crawlPoll) crawlPoll = setInterval(pollCrawl, 900);
-    if (!st.running && crawlPoll) {
-      clearInterval(crawlPoll); crawlPoll = null;
-      if (st.result && !st.result.error)
-        toast('수집을 마쳤어요 · 새 글 ' + st.result.added + '건' + (st.result.added ? ' (새로고침하면 반영돼요)' : ''));
-    }
-  }).catch(function(){});
-}
+document.getElementById('export').addEventListener('click', function(e){
+  exportOpen = !exportOpen;
+  if (exportOpen) { crawlOpen = false; document.getElementById('crawlPanel').hidden = true;
+                    window.scrollTo({top:0, behavior:'smooth'}); }
+  e.target.closest('button').classList.toggle('on', exportOpen);
+  renderExport();
+});
 
-document.getElementById('crawlBtn').addEventListener('click', function(e){
-  if (!meta.server) { toast('수집은 서버 모드에서만 돼요. node dcgall/serve.mjs 로 실행해 주세요.', true); return; }
-  crawlOpen = !crawlOpen;
-  pollCrawl();
-  if (crawlOpen) window.scrollTo({top:0, behavior:'smooth'});
-  else document.getElementById('crawlPanel').hidden = true;
-});
-document.getElementById('crawlPanel').addEventListener('keydown', function(e){
-  if (e.key !== 'Enter' || e.target.id !== 'kwAdd') return;
-  e.preventDefault();
-  var v = e.target.value.trim(); if(!v) return;
-  if (WATCH.keywords.indexOf(v) < 0) WATCH.keywords.push(v);
-  e.target.value = '';
-  saveKeywords(WATCH.keywords, WATCH.scope, WATCH.pages);
-});
-document.getElementById('crawlPanel').addEventListener('change', function(e){
-  if (e.target.id === 'kwConcept' && e.target.value) {
-    if (WATCH.keywords.indexOf(e.target.value) < 0) WATCH.keywords.push(e.target.value);
-    saveKeywords(WATCH.keywords, WATCH.scope, WATCH.pages);
-  }
-  if (e.target.id === 'kwScope') { WATCH.scope = e.target.value; saveKeywords(WATCH.keywords, WATCH.scope, WATCH.pages); }
-  if (e.target.id === 'kwPages') { WATCH.pages = Number(e.target.value); saveKeywords(WATCH.keywords, WATCH.scope, WATCH.pages); }
-});
-document.getElementById('crawlPanel').addEventListener('click', function(e){
-  var kw = e.target.closest('.tag[data-kw]');
-  if (kw) {
-    WATCH.keywords = WATCH.keywords.filter(function(k){ return k !== kw.dataset.kw });
-    saveKeywords(WATCH.keywords, WATCH.scope, WATCH.pages);
+document.getElementById('exportPanel').addEventListener('click', function(e){
+  var b = e.target.closest('.job'); if(!b) return;
+  var kind = b.dataset.kind;
+
+  if (kind === 'labels') {          // 이건 화면 안에서 바로 만든다
+    var out = {version:1, updated_at:new Date().toISOString(), manual:{}};
+    posts.forEach(function(p){ if(p.ml) out.manual[p.no] = {category:p.ml, by:'viewer', at:new Date().toISOString()} });
+    var a2 = document.createElement('a');
+    a2.href = URL.createObjectURL(new Blob([JSON.stringify(out,null,2)], {type:'application/json'}));
+    a2.download = 'labels.json'; a2.click();
+    toast('분류 라벨을 내려받았어요.');
     return;
   }
-  var j = e.target.closest('.jobseg button');
-  if (j) { crawlJob = j.dataset.job; pollCrawl(); return; }
-  if (e.target.id === 'crawlRun') {
-    fetch('/api/crawl', {method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({job: crawlJob})})
-      .then(function(r){ return r.json() })
-      .then(function(x){ if (x.error) { toast(x.error, true); return; }
-        toast(JOBNAME[x.job] + ' 수집을 시작했어요.'); pollCrawl(); });
-    return;
-  }
-  if (e.target.id === 'crawlStop') {
-    fetch('/api/crawl', {method:'POST', headers:{'Content-Type':'application/json'}, body:'{"stop":true}'})
-      .then(function(){ toast('중단을 요청했어요. 진행 중인 요청까지만 마치고 멈춰요.') });
-    return;
-  }
-  if (e.target.id === 'reloadAfter') { e.preventDefault(); location.reload(); }
+  if (!meta.server) { toast('이 형식은 서버 모드에서만 받을 수 있어요. node serve.mjs 로 실행해 주세요.', true); return; }
+
+  var q = kind === 'md-lib' ? 'kind=md&scope=library' : 'kind=' + kind;
+  b.disabled = true;
+  toast('파일을 만드는 중이에요. 글이 많으면 몇 초 걸려요.');
+  fetch('/api/export?' + q)
+    .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); 
+      var cd = r.headers.get('content-disposition') || '';
+      var m = cd.match(/filename\*=UTF-8''(.+)$/);
+      return r.blob().then(function(bl){ return {bl:bl, name: m ? decodeURIComponent(m[1]) : 'export'} }); })
+    .then(function(x){
+      var a3 = document.createElement('a');
+      a3.href = URL.createObjectURL(x.bl); a3.download = x.name; a3.click();
+      toast(x.name + ' 을 내려받았어요.');
+    })
+    .catch(function(err){ toast('만들지 못했어요: '+err.message, true) })
+    .finally(function(){ b.disabled = false; });
 });
 
 /* ---------- 필터 / 렌더 ---------- */

@@ -517,6 +517,7 @@ function drawBuild(){
     <span class="sp" style="flex:1"></span>
     <button class="btn pri" id="cAll">전체 복사</button>
     <button class="btn" id="cNeg">부정만 복사</button>
+    ${saveBar('#b','장면 이름')}
   </div>
   <h3 style="margin:0 0 6px">26슬롯</h3>
   ${SLOTS.map((s,n)=>`<div class="slot${by[n]?'':' empty'}">
@@ -531,6 +532,71 @@ function drawBuild(){
   $('#pQ').onchange=$('#pN').onchange=re;
   $('#cAll').onclick=()=>copy(assemble().full,'조립 결과');
   $('#cNeg').onclick=()=>copy(assemble().neg,'부정 프롬프트');
+  wireSave('#b', ()=>{
+    const a=assemble();
+    return head({fmt:'태그', lang:'영어', count:a.full.length})
+      +'\n\n## 프롬프트\n```\n'+a.full+'\n```\n\n## 부정 프롬프트\n```\n'+a.neg+'\n```\n';
+  }, 'img');
+}
+
+/* ── 저장 (99_작업중/) ──────────────────────────
+   정적 서버(python http.server)에는 쓰기 엔드포인트가 없다.
+   그때는 파일 내려받기로 대체한다. */
+async function saveDraft(name, content, kind){
+  if(!name){ toast('이름을 입력하세요'); return; }
+  try{
+    let r = await fetch(ROOT+'_save', {method:'POST', headers:{'content-type':'application/json'},
+      body:JSON.stringify({name, content})});
+    if(r.status===409){
+      if(!confirm(`99_작업중/${name}.md 가 이미 있습니다. 덮어쓸까요?`)) return;
+      r = await fetch(ROOT+'_save', {method:'POST', headers:{'content-type':'application/json'},
+        body:JSON.stringify({name, content, overwrite:true})});
+    }
+    if(r.ok){ const j=await r.json(); toast(j.path+' 저장됨'); return; }
+    toast('저장 실패: '+ await r.text());
+  }catch{
+    /* 정적 서버 — 내려받기로 */
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(new Blob([content],{type:'text/markdown'}));
+    a.download=name+'.md'; a.click(); URL.revokeObjectURL(a.href);
+    toast('서버가 쓰기를 지원하지 않아 내려받았습니다');
+  }
+}
+function saveBar(id, ph){
+  return `<input type="text" id="${id}n" placeholder="${ph}" style="min-width:150px">
+          <button class="btn" id="${id}s">99_작업중에 저장</button>`;
+}
+function wireSave(id, build, kind){
+  const key='char.name.'+id;
+  const el=$(id+'n'); if(el) el.value=localStorage.getItem(key)||'';
+  $(id+'s').onclick=()=>{
+    const n=$(id+'n').value.trim();
+    localStorage.setItem(key,n);
+    saveDraft(n, build(), kind);
+  };
+}
+/* 파일 머리말 — 03_프롬프트/README 의 규칙 */
+function head(o){
+  return ['플랫폼: '+(o.platform||''), '언어: '+(o.lang||'한국어'), '형식: '+(o.fmt||''),
+          (o.limit?'글자수: '+o.count+' / '+o.limit:'글자수: '+o.count),
+          '최종 수정: '+new Date().toISOString().slice(0,10)].join('\n');
+}
+
+/* ── 입력 중 기호 변환 (노션식) ─────────────────
+   저장소 표기 규칙이 → · · 를 쓰므로 타이핑을 그쪽으로 유도한다. */
+const SUBS = [[/->$/,'→'],[/<-$/,'←'],[/=>$/,'⇒'],[/\.\.\.$/,'…'],[/!=$/,'≠'],[/>=$/,'≥'],[/<=$/,'≤']];
+function autoSym(ta){
+  const p=ta.selectionStart, before=ta.value.slice(0,p);
+  for(const [re,ch] of SUBS){
+    const m=before.match(re);
+    if(m){
+      const cut=before.length-m[0].length;
+      ta.value = ta.value.slice(0,cut) + ch + ta.value.slice(p);
+      ta.selectionStart = ta.selectionEnd = cut + ch.length;
+      return true;
+    }
+  }
+  return false;
 }
 
 /* ── 챗봇 작성 (하네스 8블록) ────────────────── */
@@ -567,6 +633,7 @@ function drawWrite(){
       <span class="muted">순서가 곧 우선순위 · Anchor 를 맨 위에</span>
       <span class="sp" style="flex:1"></span>
       <button class="btn pri" id="wcopy">프롬프트 복사</button>
+      ${saveBar('#w','캐릭터 이름')}
       <button class="btn" id="wclear">비우기</button>
     </div>
     <div class="sum">
@@ -613,9 +680,15 @@ function drawWrite(){
         : `${(L-c.ch).toLocaleString()}자 남음`;
     } else $('#grest').textContent='';
   };
-  document.querySelectorAll('#main textarea[data-b]').forEach(t=>t.oninput=sync);
+  document.querySelectorAll('#main textarea[data-b]').forEach(t=>{
+    t.oninput=e=>{ if(e.inputType!=='deleteContentBackward') autoSym(t); sync(); };
+  });
   $('#lim').oninput=sync;
   $('#wcopy').onclick=()=>copy(botAssemble(botLoad()),'프롬프트');
+  wireSave('#w', ()=>{
+    const out=botAssemble(botLoad()), c=countOf(out);
+    return head({fmt:'블록', count:c.ch, limit:+($('#lim').value||0)})+'\n\n'+out+'\n';
+  }, 'bot');
   $('#wclear').onclick=()=>{ if(confirm('작성 내용을 모두 비울까요?')){ botSave({}); drawWrite(); } };
   sync();
 }

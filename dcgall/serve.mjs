@@ -21,6 +21,7 @@ import { Archive } from './lib/archive.mjs';
 import { Bookmarks } from './lib/bookmarks.mjs';
 import { mine } from './lib/miner.mjs';
 import { runCrawl, expandTargets } from './lib/crawler.mjs';
+import { execFileSync } from 'node:child_process';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const args = Object.fromEntries(
@@ -198,6 +199,34 @@ const server = http.createServer(async (req, res) => {
       cfg.jobs.watch.targets = live.jobs.watch.targets;             // 실행 중인 서버에도 반영
       console.log(`  감시 키워드 ${kws.length}개로 저장`);
       return json(res, 200, { ok: true, keywords: kws, count: kws.length });
+    }
+
+    // 내보내기 — export.mjs 를 그대로 돌려서 만든 파일을 내려준다
+    if (req.method === 'GET' && url.pathname === '/api/export') {
+      const kind = url.searchParams.get('kind') || 'md';
+      const scope = url.searchParams.get('scope') === 'library' ? ['--library'] : [];
+      const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'dcgall-'));
+      try {
+        const argv = kind === 'md'
+          ? ['--format', 'md', ...scope, '--out', tmp]
+          : ['--level', kind, '--out', tmp];
+        execFileSync(process.execPath, [path.join(ROOT, 'export.mjs'), ...argv], { stdio: 'pipe' });
+        const made = fs.readdirSync(tmp).filter((f) => f !== 'README.md');
+        if (!made.length) return json(res, 500, { error: '만들어진 파일이 없어요.' });
+        const file = path.join(tmp, made[0]);
+        const buf = fs.readFileSync(file);
+        res.writeHead(200, {
+          'Content-Type': kind === 'md' ? 'application/zip' : 'application/x-ndjson',
+          'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(made[0])}`,
+          'Content-Length': buf.length,
+        });
+        console.log(`  내보내기: ${made[0]} (${(buf.length / 1048576).toFixed(2)}MB)`);
+        return res.end(buf);
+      } catch (e) {
+        return json(res, 500, { error: e.message });
+      } finally {
+        fs.rmSync(tmp, { recursive: true, force: true });
+      }
     }
 
     if (url.pathname === '/api/crawl') {
