@@ -98,6 +98,7 @@ ${CSS}
     <button class="arrow" id="catPrev" aria-label="왼쪽">‹</button>
     <div class="scrollrow" id="catWrap"><div class="cats" id="cats"></div></div>
     <button class="arrow" id="catNext" aria-label="오른쪽">›</button>
+    <span class="count" id="cnt"></span>
   </div>
 
   <div class="hdr-row tight cat-row" id="tagRow">

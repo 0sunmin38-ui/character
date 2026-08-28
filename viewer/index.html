@@ -213,7 +213,7 @@ const SLOTS = ['00 카메라·구도','01 성별','02 캐릭터','03 시선','04
 
 const S = { files:[], md:{}, dict:[], style:[], artist:[], links:[],
             tagset:new Set(), preset_vocab:new Set(), presets:{Q:{},N:{}},
-            cart:[], cur:null, tab:'read', group:'read' };
+            cart:[], cur:null, tab:'read', group:'read', static:false };
 
 /* ── 저장소 훑기 ────────────────────────────── */
 async function listDir(path){
@@ -313,8 +313,19 @@ const gradeOf = src => (src.split('\n')[0].match(/\[(원문|정리|작업|도구
 /* ── 로드 ───────────────────────────────────── */
 const norm = t => t.replace(/_/g,' ').trim().toLowerCase();
 async function boot(){
-  try{ S.files = await walk(ROOT); }
-  catch{ $('#main').innerHTML='<p class="res no">파일 목록을 읽지 못했습니다. 저장소 루트에서 <code>python3 -m http.server</code> 로 열어주세요.</p>'; return; }
+  /* GitHub Pages 처럼 디렉터리 목록을 주지 않는 곳에서는 manifest.json 을 쓴다.
+     로컬에서 파일을 추가했는데 목록에 없다면 node viewer/build-manifest.mjs 로 다시 만든다. */
+  try{
+    const r = await fetch(ROOT+'viewer/manifest.json', {cache:'no-store'});
+    if(r.ok){ S.files = (await r.json()).files; S.static = true; }
+  }catch{}
+  if(!S.files.length){ try{ S.files = await walk(ROOT); }catch{} }
+  if(!S.files.length){
+    $('#main').innerHTML='<p class="res no">파일 목록을 읽지 못했습니다.<br>'
+      +'로컬이면 저장소 루트에서 <code>node viewer/serve.mjs</code> 로 열고,<br>'
+      +'정적 호스팅이면 <code>node viewer/build-manifest.mjs</code> 로 목록을 만들어 커밋하세요.</p>';
+    return;
+  }
   if(!S.files.length){ $('#main').innerHTML='<p class="res no">파일을 찾지 못했습니다. 디렉터리 목록을 제공하는 서버로 열어주세요.</p>'; return; }
 
   const get = async p => (await fetch(ROOT + p)).text();
@@ -549,7 +560,10 @@ async function addFile(path, content){
 /* 저장소를 다시 훑는다 — 터미널에서 파일을 만들었을 때 */
 async function reload(){
   const before=S.files.length;
-  S.files = await walk(ROOT);
+  try{
+    const r=await fetch(ROOT+'viewer/manifest.json',{cache:'no-store'});
+    S.files = r.ok ? (await r.json()).files : await walk(ROOT);
+  }catch{ S.files = await walk(ROOT); }
   await Promise.all(S.files.filter(f=>f.endsWith('.md') && !(f in S.md))
     .map(async f=>{ S.md[f]=await (await fetch(ROOT+f)).text(); }));
   drawSide();
@@ -586,6 +600,7 @@ async function saveDraft(name, content, kind){
 }
 /* id 에는 '#' 을 넣지 않는다 — 선택자는 wireSave 에서 만든다. */
 function saveBar(id, ph){
+  if(S.static) return '';        /* 정적 호스팅에는 쓰기 엔드포인트가 없다 */
   return `<input type="text" id="${id}-name" placeholder="${ph}" style="min-width:150px">
           <button class="btn" id="${id}-save">99_작업중에 저장</button>`;
 }

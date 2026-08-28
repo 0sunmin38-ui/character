@@ -36,12 +36,33 @@ Codespaces에서는 포트가 자동 포워딩된다. VS Code의 Simple Browser 
 
 담은 태그와 챗봇 작성 내용은 `localStorage` 에 남아 새로고침해도 유지된다.
 
-## 목록 갱신
+## 파일 목록을 찾는 방법
 
-파일 목록은 부팅 때 한 번 훑는다. 그래서
+1. `viewer/manifest.json` 이 있으면 그걸 쓴다 — **정적 호스팅(GitHub Pages)용**
+2. 없으면 서버의 디렉터리 목록을 훑는다 — 로컬 서버용
 
+목록은 부팅 때 한 번 읽는다.
 - **저장하면** 그 파일이 목록에 바로 추가된다
-- **터미널에서 파일을 만들었다면** 상단 `↻` 를 눌러 다시 훑는다
+- **터미널에서 파일을 만들었다면** 상단 `↻`
+- **manifest 를 쓰는 중이라면** 파일을 추가한 뒤 다시 만들어 커밋해야 반영된다
+
+```bash
+node viewer/build-manifest.mjs
+```
+
+## GitHub Pages 로 링크 만들기
+
+저장소가 **공개**여야 무료 Pages 를 쓸 수 있다.
+
+```bash
+node viewer/build-manifest.mjs && git add -A && git commit -m "manifest" && git push
+```
+
+저장소 → Settings → Pages → Source `Deploy from a branch` → `main` / `/ (root)`
+→ `https://0sunmin38-ui.github.io/character/viewer/`
+
+정적 호스팅에서는 **저장 기능이 자동으로 숨겨진다** (쓰기 엔드포인트가 없다).
+읽기·검색·조립·검토는 전부 동작한다.
 
 ## 담은 태그 패널
 
