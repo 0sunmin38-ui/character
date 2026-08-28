@@ -27,7 +27,7 @@ node serve.mjs                 # 뷰어 (수집 · 서재 · 사전)
 - 요청 간격 1.2초가 기본값입니다. **줄이지 마세요.**
 - 수집한 글은 갤러리 이용자들이 쓴 것입니다. 개인 열람·분석 용도로만 쓰고 재배포하지 마세요.
 - 작성자 고유 id 와 IP 조각은 **처음부터 저장하지 않습니다.**
-- 공유가 필요하면 `node export.mjs --level meta|text|full` 로 식별정보를 뺀 사본을 만드세요.
+- 공유가 필요하면 `node export.mjs` 로 식별정보를 뺀 사본을 만드세요.
 
 ---
 
@@ -361,9 +361,28 @@ node serve.mjs
 공유가 필요하면 식별정보를 떼어낸 사본을 만든다. 원본은 건드리지 않는다.
 
 ```bash
+# 사람이 읽을 형태: 글마다 .md 파일, 분류별 폴더, zip 하나로 묶임
+node export.mjs --format md              # 전부
+node export.mjs --format md --library    # 서재에 담은 것만
+
+# 분석용 형태: JSONL 한 줄에 글 하나
 node export.mjs --level meta   # 제목·날짜·지표·분류만
-node export.mjs --level text   # + 본문·댓글 (식별정보는 제거)
+node export.mjs --level text   # + 본문·댓글
+node export.mjs --level full   # + 원문 주소·이미지 주소
 ```
+
+마크다운 묶음은 이런 모양이다.
+
+```
+aichatting-2026-08-28/
+  README.md              분류별 건수
+  지침/
+    373520-집통소 유리 제물 신도 등등 틀어막는 뚱쭝한 프롬.md
+  위젯·상태창/
+  OOC/
+```
+
+zip 은 외부 라이브러리 없이 `lib/zip.mjs` 가 직접 만든다. 파일명에 UTF-8 플래그를 세워 한글이 깨지지 않는다.
 
 어느 단계에서도 **닉네임·uid·IP·이미지·원본 HTML 은 나가지 않는다.**
 결과물 옆에 무엇을 얼마나 제거했는지 적은 README 가 같이 생성된다.

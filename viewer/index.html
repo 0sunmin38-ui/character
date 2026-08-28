@@ -37,7 +37,9 @@ header .sp{flex:1}
 .tab:hover{background:var(--bg)}
 .tab.on{background:var(--bg);border-color:var(--line);color:var(--ink);font-weight:600}
 .sep{width:1px;height:18px;background:var(--line);margin:0 5px}
-.grouplbl{font-size:11px;font-weight:700;color:var(--dim);letter-spacing:.4px;margin-right:2px}
+.grp-t.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+#subs{display:flex;gap:3px}
+#subs .tab{padding:4px 11px;font-size:13px}
 .blk{margin:0 0 12px}
 .blk label{display:block;font-weight:700;font-size:13px;margin-bottom:3px}
 .blk .hint{font-weight:400;color:var(--dim);font-size:12px;margin-left:6px}
@@ -96,6 +98,22 @@ code,.tag{font-family:var(--mono);font-size:12.5px}
 .tag:hover{border-color:var(--accent)}
 .nsfw{color:var(--bad);font-weight:700;font-size:11px}
 #cart .head{padding:10px 12px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:6px}
+/* 패널이 좁아지면 단계적으로 줄인다 — lg → md → sm */
+#cart .head .ttl-lg,#cart .head .ttl-md,#cart .head .ttl-sm{white-space:nowrap}
+#cart .head .ttl-md,#cart .head .ttl-sm{display:none}
+#cart .clear-i{display:none}          /* 기본은 lg — 텍스트 버튼 */
+#cart[data-w=md] .head .ttl-lg{display:none} #cart[data-w=md] .head .ttl-md{display:inline}
+#cart[data-w=sm] .head .ttl-lg{display:none} #cart[data-w=sm] .head .ttl-sm{display:inline}
+#cart[data-w=sm] .head{padding:10px 6px;justify-content:center}
+#cart[data-w=sm] #clear{padding:3px 6px}
+#cart[data-w=sm] .clear-t{display:none}
+#cart[data-w=md] .clear-i,#cart[data-w=sm] .clear-i{display:inline}
+#cart[data-w=md] .clear-t{display:none}
+#cart[data-w=md] .ci select{width:60px}
+#cart[data-w=sm] .ci{padding:5px 6px;gap:4px}
+#cart[data-w=sm] .ci select{display:none}
+#side[data-w=sm] .grp .n{display:none}
+#side[data-w=sm] .f{padding:4px 7px}
 #cart .list{flex:1;overflow:auto}
 .ci{padding:6px 12px;border-bottom:1px solid var(--line);display:flex;gap:6px;align-items:center}
 .ci select{flex:none;width:88px;padding:2px 4px;border:1px solid var(--line);border-radius:5px;
@@ -139,16 +157,11 @@ textarea{width:100%;min-height:130px;padding:11px;border:1px solid var(--line);b
 <div id="app">
   <header>
     <div class="brand">character</div>
-    <button class="tab on" data-t="read">읽기</button>
-    <span class="sep"></span>
-    <span class="grouplbl">이미지</span>
-    <button class="tab" data-t="tag">태그</button>
-    <button class="tab" data-t="build">조립</button>
-    <button class="tab" data-t="check">검토</button>
-    <span class="sep"></span>
-    <span class="grouplbl">챗봇</span>
-    <button class="tab" data-t="write">작성</button>
-    <button class="tab" data-t="bcheck">검토</button>
+    <button class="tab grp-t on" data-g="read">읽기</button>
+    <button class="tab grp-t" data-g="img">이미지</button>
+    <button class="tab grp-t" data-g="bot">챗봇</button>
+    <span class="sep" id="subsep" hidden></span>
+    <span id="subs"></span>
     <div class="sp"></div>
     <button class="tab" id="tgS" title="파일 목록 접기/펼치기">◧</button>
     <button class="tab" id="tgC" title="담은 태그 접기/펼치기">◨</button>
@@ -160,9 +173,11 @@ textarea{width:100%;min-height:130px;padding:11px;border:1px solid var(--line);b
   <div class="rz" id="rzR" title="드래그로 너비 조절 · 더블클릭으로 접기"></div>
   <aside id="cart">
     <div class="head">
-      <strong>담은 태그</strong><span class="muted" id="cn">0</span>
+      <strong><span class="ttl-lg">담은 태그</span><span class="ttl-md">태그</span><span class="ttl-sm">태</span></strong>
+      <span class="muted" id="cn">0</span>
       <div class="sp" style="flex:1"></div>
-      <button class="btn" id="clear" style="padding:3px 9px;font-size:12px">비우기</button>
+      <button class="btn" id="clear" title="비우기" style="padding:3px 9px;font-size:12px">
+        <span class="clear-t">비우기</span><span class="clear-i">✕</span></button>
     </div>
     <div class="list" id="clist"></div>
   </aside>
@@ -189,7 +204,7 @@ const SLOTS = ['00 카메라·구도','01 성별','02 캐릭터','03 시선','04
 
 const S = { files:[], md:{}, dict:[], style:[], artist:[], links:[],
             tagset:new Set(), preset_vocab:new Set(), presets:{Q:{},N:{}},
-            cart:[], cur:null, tab:'read' };
+            cart:[], cur:null, tab:'read', group:'read' };
 
 /* ── 저장소 훑기 ────────────────────────────── */
 async function listDir(path){
@@ -348,14 +363,14 @@ function drawSide(){
   $('#side').onclick = e => {
     const g=e.target.closest('.grp');
     if(g){ const k=g.dataset.g; FOLD.has(k)?FOLD.delete(k):FOLD.add(k); foldSave(); drawSide(); return; }
-    const el=e.target.closest('.f'); if(el){ setTab('read'); show(el.dataset.f); }
+    const el=e.target.closest('.f'); if(el){ setGroup('read'); show(el.dataset.f); }
   };
 }
 
 /* ── 읽기 ───────────────────────────────────── */
 function show(f){
   S.cur=f; drawSide();
-  if(f.endsWith('.csv')){ setTab('tag'); return; }
+  if(f.endsWith('.csv')){ setGroup('img'); return; }
   const src=S.md[f]||''; const g=gradeOf(src);
   $('#main').innerHTML = `<div class="bar">
       ${g?`<span class="badge ${g}">${g}</span>`:''}
@@ -727,10 +742,30 @@ function drawCheck(){
 }
 
 /* ── 공통 ───────────────────────────────────── */
+const GROUPS = {
+  read:{ subs:[] },
+  img: { subs:[['tag','태그'],['build','조립'],['check','검토']] },
+  bot: { subs:[['write','작성'],['bcheck','검토']] },
+};
+const VIEW = { read:()=>show(S.cur||S.files[0]), tag:drawTag, build:drawBuild,
+               check:drawCheck, write:drawWrite, bcheck:drawBotCheck };
+const groupOf = t => t==='read' ? 'read'
+  : (GROUPS.img.subs.some(([k])=>k===t) ? 'img' : 'bot');
+
+function setGroup(g){
+  S.group=g;
+  document.querySelectorAll('.grp-t').forEach(b=>b.classList.toggle('on',b.dataset.g===g));
+  const subs=GROUPS[g].subs;
+  $('#subsep').hidden = !subs.length;
+  $('#subs').innerHTML = subs.map(([k,n],i)=>
+    `<button class="tab${i===0?' on':''}" data-t="${k}">${n}</button>`).join('');
+  $('#subs').querySelectorAll('.tab').forEach(b=>b.onclick=()=>setTab(b.dataset.t));
+  setTab(subs.length ? subs[0][0] : g);          /* 그룹을 누르면 첫 항목이 열린다 */
+}
 function setTab(t){
-  S.tab=t; document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
-  ({read:()=>show(S.cur||S.files[0]), tag:drawTag, build:drawBuild, check:drawCheck,
-    write:drawWrite, bcheck:drawBotCheck})[t]();
+  S.tab=t;
+  $('#subs').querySelectorAll('.tab').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
+  VIEW[t]();
 }
 function copy(text,label){
   navigator.clipboard.writeText(text).then(()=>toast((label||'')+' 복사됨'),()=>toast('복사 실패'));
@@ -740,6 +775,7 @@ let tt; function toast(m){ const e=$('#toast'); e.textContent=m; e.classList.add
 
 /* ── 패널 너비 · 접기 ─────────────────────────── */
 const app=$('#app'), LS={sw:'char.sw', cw:'char.cw', ps:'char.ps'};
+const MINW=150, MAXW=560;   /* 패널 최소·최대 너비 */
 (function initPanels(){
   const sw=localStorage.getItem(LS.sw), cw=localStorage.getItem(LS.cw);
   if(sw) app.style.setProperty('--sw',sw);
@@ -759,7 +795,7 @@ function drag(el, which){
     el.classList.add('drag'); document.body.classList.add('resizing');
     const move = ev => {
       const w = side ? ev.clientX : window.innerWidth - ev.clientX;
-      const v = Math.max(150, Math.min(560, w)) + 'px';
+      const v = Math.max(MINW, Math.min(MAXW, w)) + 'px';
       app.style.setProperty('--'+which, v);
       localStorage.setItem(LS[which], v);
     };
@@ -775,7 +811,16 @@ drag($('#rzL'),'sw'); drag($('#rzR'),'cw');
 $('#tgS').onclick=()=>{ app.classList.toggle('nos'); savePanels(); };
 $('#tgC').onclick=()=>{ app.classList.toggle('noc'); savePanels(); };
 
-document.querySelectorAll('.tab[data-t]').forEach(b=>b.onclick=()=>setTab(b.dataset.t));
+document.querySelectorAll('.grp-t').forEach(b=>b.onclick=()=>setGroup(b.dataset.g));
+
+/* 패널 폭에 따라 data-w 를 붙인다. 드래그 중에도 갱신된다. */
+function widthClass(el, bp){
+  const set=()=>{ const w=el.getBoundingClientRect().width;
+    el.dataset.w = w>=bp[0] ? 'lg' : (w>=bp[1] ? 'md' : 'sm'); };
+  new ResizeObserver(set).observe(el); set();
+}
+widthClass($('#cart'), [230,165]);
+widthClass($('#side'), [210,170]);
 $('#clear').onclick=()=>{ if(S.cart.length && confirm('담은 태그를 모두 비울까요?')){ S.cart=[]; saveCart(); } };
 boot();
 </script>
