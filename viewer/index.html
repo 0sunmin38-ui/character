@@ -121,6 +121,12 @@ code,.tag{font-family:var(--mono);font-size:12.5px}
 .ci .t{flex:1;font-family:var(--mono);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ci .x{cursor:pointer;color:var(--dim);border:none;background:none;padding:0 2px}
 .ci .x:hover{color:var(--bad)}
+.md pre{position:relative}
+.md pre .cp{position:absolute;top:6px;right:6px;padding:2px 9px;font-size:11px;
+  border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--dim);
+  cursor:pointer;opacity:0;transition:opacity .15s}
+.md pre:hover .cp{opacity:1}
+.md pre .cp:hover{color:var(--ink);border-color:var(--accent)}
 pre{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:12px;
   overflow:auto;font-family:var(--mono);font-size:12.5px;line-height:1.6;white-space:pre-wrap;word-break:break-all}
 textarea{width:100%;min-height:130px;padding:11px;border:1px solid var(--line);border-radius:9px;
@@ -372,11 +378,27 @@ function show(f){
   S.cur=f; drawSide();
   if(f.endsWith('.csv')){ setGroup('img'); return; }
   const src=S.md[f]||''; const g=gradeOf(src);
+  const bodyMD = src.replace(/^> `\[[^\]]+\][\s\S]*?\n/,'');   /* 배너 줄 제외 */
+  const fences = [...bodyMD.matchAll(/```[^\n]*\n([\s\S]*?)```/g)].map(m=>m[1].replace(/\n$/,''));
+  S.body = bodyMD; S.fences = fences;
   $('#main').innerHTML = `<div class="bar">
       ${g?`<span class="badge ${g}">${g}</span>`:''}
       <code class="muted">${esc(f)}</code>
-      <button class="btn" onclick="copy(atob('${btoa(unescape(encodeURIComponent(f)))}'),'경로')">경로 복사</button>
-    </div><div class="md">${renderMD(src.replace(/^> `\[[^\]]+\][\s\S]*?\n/,''))}</div>`;
+      <span class="sp" style="flex:1"></span>
+      <button class="btn pri" id="cpBody">본문 복사</button>
+      ${fences.length?`<button class="btn" id="cpAll">코드블록 ${fences.length}개 복사</button>`:''}
+      <button class="btn" id="cpPath" title="터미널에서 이 파일을 지정할 때">경로</button>
+    </div><div class="md">${renderMD(bodyMD)}</div>`;
+  /* 코드블록마다 복사 버튼 — 템플릿·프리셋은 이 안이 실제 쓸 내용이다 */
+  $('#main').querySelectorAll('.md pre').forEach((pre,i)=>{
+    const b=document.createElement('button');
+    b.className='cp'; b.textContent='복사';
+    b.onclick=()=>copy(pre.querySelector('code').textContent,`코드블록 ${i+1}`);
+    pre.appendChild(b);
+  });
+  $('#cpBody').onclick=()=>copy(S.body,'본문');
+  const all=$('#cpAll'); if(all) all.onclick=()=>copy(S.fences.join('\n\n'),'코드블록 전체');
+  $('#cpPath').onclick=()=>copy(f,'경로');
   $('#main').scrollTop=0;
 }
 
