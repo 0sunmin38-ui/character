@@ -16,6 +16,9 @@ import { Store } from './lib/store.mjs';
 import { Labels } from './lib/labels.mjs';
 import { Glossary } from './lib/glossary.mjs';
 import { compile, classify } from './lib/classify.mjs';
+import { makeZip, safeName } from './lib/zip.mjs';
+import { Bookmarks } from './lib/bookmarks.mjs';
+import { Archive } from './lib/archive.mjs';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const args = Object.fromEntries(
@@ -37,6 +40,77 @@ const store = new Store(ROOT, galleryId);
 const labels = new Labels(ROOT, galleryId);
 
 const all = [...store.load().values()].filter((p) => !p.is_notice);
+
+/* ── 마크다운 + zip ────────────────────────────────────────── */
+if (args.format === 'md') {
+  const onlyLib = !!args.library;
+  const bmk = new Bookmarks(ROOT, galleryId);
+  const arc = new Archive(ROOT, galleryId);
+  const catLabel = Object.fromEntries(
+    JSON.parse(fs.readFileSync(confFile(ROOT, 'taxonomy.json'), 'utf8')).categories.map((c) => [c.key, c.label])
+  );
+  catLabel.etc = '기타';
+
+  const pick = all.filter((p) => (onlyLib ? bmk.has(p.no) : true));
+  const entries = [];
+  const stamp = new Date().toISOString().slice(0, 10);
+  const base = `${galleryId}-${stamp}`;
+  const perCat = {};
+  let withBody = 0;
+
+  for (const p of pick) {
+    const snap = arc.load(p.no);
+    const body = snap?.body_text || p.detail?.body_text || '';
+    const comments = snap?.comments || p.comments || [];
+    const auto = classify(p, tax);
+    const cat = labels.get(p.no)?.category || auto.category;
+    const label = catLabel[cat] || cat;
+    perCat[label] = (perCat[label] || 0) + 1;
+    if (body) withBody++;
+
+    const L = [];
+    L.push(`# ${p.title}`, '');
+    L.push(`- 분류: ${label}${p.headtext ? ` · 말머리: ${p.headtext}` : ''}`);
+    L.push(`- 작성: ${(p.date || '').replace('T', ' ').slice(0, 16)}`);
+    L.push(`- 추천 ${p.recommend ?? '-'} · 조회 ${p.views ?? '-'} · 댓글 ${p.comment_count ?? 0}`);
+    if (snap?.gone) L.push(`- **원문이 삭제되어 보존본으로만 남아 있습니다.**`);
+    else if (p.url) L.push(`- 원문: ${p.url}`);
+    if (snap?.archived_at) L.push(`- 보존: ${snap.archived_at.slice(0, 10)}`);
+    L.push('', '---', '');
+    L.push(body || '_본문을 수집하지 않았습니다._');
+
+    const said = comments.filter((c) => c.text);
+    if (said.length) {
+      L.push('', '---', '', `## 댓글 ${said.length}개`, '');
+      for (const c of said) L.push(`${c.depth ? '  - ' : '- '}${c.text.replace(/\n/g, ' ')}`);
+    }
+    if (snap?.local_images?.some((i) => i.file)) {
+      L.push('', `_보존된 이미지 ${snap.local_images.filter((i) => i.file).length}장은 zip 에 넣지 않았습니다._`);
+    }
+
+    entries.push({
+      name: `${base}/${safeName(label, 24)}/${p.no}-${safeName(p.title, 50)}.md`,
+      data: L.join('\n') + '\n',
+    });
+  }
+
+  // 목차
+  const idx = [`# ${cfg.gallery.name}`, '', `- 생성 ${new Date().toISOString().slice(0, 16).replace('T', ' ')}`,
+    `- 글 ${pick.length}건${onlyLib ? ' (서재에 담은 것만)' : ''}`, `- 본문 있는 글 ${withBody}건`, '', '## 분류별', ''];
+  for (const [k, v] of Object.entries(perCat).sort((a, b) => b[1] - a[1])) idx.push(`- ${k} ${v}건`);
+  idx.push('', '---', '', '작성자 정보는 담지 않았습니다. 글의 저작권은 각 작성자에게 있습니다.',
+    '개인 열람용으로만 쓰고 재배포하지 마세요.');
+  entries.unshift({ name: `${base}/README.md`, data: idx.join('\n') + '\n' });
+
+  fs.mkdirSync(outDir, { recursive: true });
+  const zipPath = path.join(outDir, `${base}${onlyLib ? '-서재' : ''}.zip`);
+  fs.writeFileSync(zipPath, makeZip(entries));
+  console.log(`\n마크다운 묶음 생성: ${zipPath}`);
+  console.log(`  글 ${pick.length}건 (본문 있는 것 ${withBody}건) · 파일 ${entries.length}개 · ${(fs.statSync(zipPath).size / 1048576).toFixed(2)}MB`);
+  console.log(`  분류별: ${Object.entries(perCat).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v}`).join(' · ')}`);
+  process.exit(0);
+}
+
 let strippedNick = 0, strippedIp = 0, strippedUid = 0, droppedImg = 0;
 
 const rows = all.map((p) => {
