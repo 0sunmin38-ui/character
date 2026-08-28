@@ -29,7 +29,9 @@ body.resizing{cursor:col-resize;user-select:none}
 /* 접을 때 display:none 을 쓰면 그리드 아이템이 앞 칼럼으로 밀린다.
    칼럼 폭만 0 으로 두고 내용은 잘라낸다. */
 #app.nos #side,#app.noc #cart{overflow:hidden;border:none}
-#app.noc #rzR{pointer-events:none;opacity:0}
+/* 담은 태그를 안 쓰는 그룹에서만 우측 리사이저를 죽인다.
+   이미지 그룹에서는 접혀 있어도 드래그로 되살릴 수 있어야 한다. */
+#app:not([data-g=img]) #rzR{pointer-events:none;opacity:0}
 header{grid-column:1/-1;display:flex;align-items:center;gap:4px;padding:0 12px;
   background:var(--panel);border-bottom:1px solid var(--line)}
 header .brand{font-weight:700;margin-right:12px;letter-spacing:-.3px}
@@ -171,7 +173,6 @@ textarea{width:100%;min-height:130px;padding:11px;border:1px solid var(--line);b
     <span id="subs"></span>
     <div class="sp"></div>
     <button class="tab" id="tgS" title="파일 목록 접기/펼치기">◧</button>
-    <button class="tab" id="tgC" title="담은 태그 접기/펼치기">◨</button>
     <span class="muted" id="stat">불러오는 중…</span>
   </header>
   <nav id="side"></nav>
@@ -856,7 +857,7 @@ function setGroup(g){
      다른 그룹에선 숨기되, 사용자가 직접 접어둔 설정은 건드리지 않는다. */
   const img = g==='img';
   app.classList.toggle('noc', !img || cartPref());
-  $('#tgC').hidden = !img;
+  app.dataset.g = g;
   const subs=GROUPS[g].subs;
   $('#subsep').hidden = !subs.length;
   $('#subs').innerHTML = subs.map(([k,n],i)=>
@@ -915,7 +916,6 @@ function drag(el, which){
 }
 drag($('#rzL'),'sw'); drag($('#rzR'),'cw');
 $('#tgS').onclick=()=>{ app.classList.toggle('nos'); savePanels(); };
-$('#tgC').onclick=()=>{ app.classList.toggle('noc'); savePanels(); };
 
 document.querySelectorAll('.grp-t').forEach(b=>b.onclick=()=>setGroup(b.dataset.g));
 
