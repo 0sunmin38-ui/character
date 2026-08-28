@@ -172,6 +172,7 @@ textarea{width:100%;min-height:130px;padding:11px;border:1px solid var(--line);b
     <span class="sep" id="subsep" hidden></span>
     <span id="subs"></span>
     <div class="sp"></div>
+    <button class="tab" id="reload" title="저장소 다시 읽기 (터미널에서 만든 파일 반영)">↻</button>
     <button class="tab" id="tgS" title="파일 목록 접기/펼치기">◧</button>
     <span class="muted" id="stat">불러오는 중…</span>
   </header>
@@ -381,14 +382,12 @@ function show(f){
   if(f.endsWith('.csv')){ setGroup('img'); return; }
   const src=S.md[f]||''; const g=gradeOf(src);
   const bodyMD = src.replace(/^> `\[[^\]]+\][\s\S]*?\n/,'');   /* 배너 줄 제외 */
-  const fences = [...bodyMD.matchAll(/```[^\n]*\n([\s\S]*?)```/g)].map(m=>m[1].replace(/\n$/,''));
-  S.body = bodyMD; S.fences = fences;
+  S.body = bodyMD;
   $('#main').innerHTML = `<div class="bar">
       ${g?`<span class="badge ${g}">${g}</span>`:''}
       <code class="muted">${esc(f)}</code>
       <span class="sp" style="flex:1"></span>
       <button class="btn pri" id="cpBody">본문 복사</button>
-      ${fences.length?`<button class="btn" id="cpAll">코드블록 ${fences.length}개 복사</button>`:''}
       <button class="btn" id="cpPath" title="터미널에서 이 파일을 지정할 때">경로</button>
     </div><div class="md">${renderMD(bodyMD)}</div>`;
   /* 코드블록마다 복사 버튼 — 템플릿·프리셋은 이 안이 실제 쓸 내용이다 */
@@ -399,7 +398,6 @@ function show(f){
     pre.appendChild(b);
   });
   $('#cpBody').onclick=()=>copy(S.body,'본문');
-  const all=$('#cpAll'); if(all) all.onclick=()=>copy(S.fences.join('\n\n'),'코드블록 전체');
   $('#cpPath').onclick=()=>copy(f,'경로');
   $('#main').scrollTop=0;
 }
@@ -541,6 +539,23 @@ function drawBuild(){
   }, 'img');
 }
 
+/* 저장된 파일을 목록에 넣고 사이드바를 다시 그린다.
+   부팅 때 한 번만 훑기 때문에 이걸 안 하면 저장해도 목록에 안 나온다. */
+async function addFile(path, content){
+  S.md[path] = content;
+  if(!S.files.includes(path)){ S.files.push(path); S.files.sort(); }
+  drawSide();
+}
+/* 저장소를 다시 훑는다 — 터미널에서 파일을 만들었을 때 */
+async function reload(){
+  const before=S.files.length;
+  S.files = await walk(ROOT);
+  await Promise.all(S.files.filter(f=>f.endsWith('.md') && !(f in S.md))
+    .map(async f=>{ S.md[f]=await (await fetch(ROOT+f)).text(); }));
+  drawSide();
+  toast(`${S.files.length}개 파일${S.files.length>before?` (+${S.files.length-before})`:''}`);
+}
+
 /* ── 저장 (99_작업중/) ──────────────────────────
    정적 서버(python http.server)에는 쓰기 엔드포인트가 없다.
    그때는 파일 내려받기로 대체한다. */
@@ -554,7 +569,12 @@ async function saveDraft(name, content, kind){
       r = await fetch(ROOT+'_save', {method:'POST', headers:{'content-type':'application/json'},
         body:JSON.stringify({name, content, overwrite:true})});
     }
-    if(r.ok){ const j=await r.json(); toast(j.path+' 저장됨'); return; }
+    if(r.ok){
+      const j=await r.json();
+      await addFile(j.path, content);       /* 목록에 즉시 반영 */
+      toast(j.path+' 저장됨');
+      return;
+    }
     toast('저장 실패: '+ await r.text());
   }catch{
     /* 정적 서버 — 내려받기로 */
@@ -916,6 +936,7 @@ function drag(el, which){
 }
 drag($('#rzL'),'sw'); drag($('#rzR'),'cw');
 $('#tgS').onclick=()=>{ app.classList.toggle('nos'); savePanels(); };
+$('#reload').onclick=reload;
 
 document.querySelectorAll('.grp-t').forEach(b=>b.onclick=()=>setGroup(b.dataset.g));
 
