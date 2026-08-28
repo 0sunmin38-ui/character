@@ -80,7 +80,7 @@ ${CSS}
 <header class="hdr">
   ${gnbHtml('library', server,
     '<span class="stat" id="storage"></span>' +
-    '<button class="ctl" id="export" title="내가 고친 분류를 labels.json 으로 내려받아요"><span class="e">↓</span><span class="t">분류 내보내기</span></button>')}
+    '<button class="ctl" id="export" title="서재에 담은 글을 마크다운 zip 으로 내보내요"><span class="e">↑</span><span class="t">내보내기</span></button>')}
   <div class="hdr-tools">
   <div class="hdr-row search-row">
     <label class="search"><span class="ico">⌕</span>
@@ -283,13 +283,24 @@ document.getElementById('cats').addEventListener('click', function(e){
 document.getElementById('tags').addEventListener('click', function(e){
   var c=e.target.closest('.cat'); if(!c) return;
   S.tag = (S.tag===c.dataset.tag)?'':c.dataset.tag; renderChips(); render(); });
-document.getElementById('export').addEventListener('click', function(){
-  var out = {version:1, updated_at:new Date().toISOString(), manual:{}};
-  items.forEach(function(p){ if(p.ml) out.manual[p.no] = {category:p.ml, by:'library', at:new Date().toISOString()} });
-  var a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([JSON.stringify(out,null,2)], {type:'application/json'}));
-  a.download = 'labels.json'; a.click();
-  toast('labels.json 을 내려받았어요. node dcgall/classify.mjs --import <파일> 로 반영해 주세요.');
+document.getElementById('export').addEventListener('click', function(e){
+  var btn = e.target.closest('button');
+  if (!meta.server) { toast('내보내기는 서버 모드에서만 돼요. node serve.mjs 로 실행해 주세요.', true); return; }
+  if (!items.length) { toast('서재가 비어 있어요.', true); return; }
+  btn.disabled = true;
+  toast('서재 ' + items.length + '건을 마크다운으로 만드는 중이에요.');
+  fetch('/api/export?kind=md&scope=library')
+    .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status);
+      var cd = r.headers.get('content-disposition') || '';
+      var m = cd.match(/filename\*=UTF-8''(.+)$/);
+      return r.blob().then(function(bl){ return {bl:bl, name: m ? decodeURIComponent(m[1]) : 'export.zip'} }); })
+    .then(function(x){
+      var a2 = document.createElement('a');
+      a2.href = URL.createObjectURL(x.bl); a2.download = x.name; a2.click();
+      toast(x.name + ' 을 내려받았어요.');
+    })
+    .catch(function(err){ toast('만들지 못했어요: '+err.message, true) })
+    .finally(function(){ btn.disabled = false; });
 });
 
 document.getElementById('selAll').addEventListener('click', function(){

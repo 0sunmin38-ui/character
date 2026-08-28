@@ -282,7 +282,7 @@ main{padding:18px 28px 90px;max-width:1080px;margin:0 auto}
 #prog i{display:block;height:100%;background:#fff;width:0;transition:width .3s}
 
 /* ── 사전 패널 ───────────────────────────────────────────── */
-#crawlPanel,#glPanel,#exportPanel{max-width:1080px;margin:16px auto 0;padding:0 28px}
+#crawlPanel,#glPanel{max-width:1080px;margin:16px auto 0;padding:0 28px}
 .job{display:block;width:100%;text-align:left;border:1px solid var(--line);background:var(--sunken);
  border-radius:9px;padding:11px 13px;margin-bottom:7px;cursor:pointer;color:var(--ink);font:inherit;transition:.12s}
 .job:hover{border-color:var(--accent);background:var(--accent-w)}
@@ -577,7 +577,7 @@ ${CSS}</style></head><body>
   ${gnbHtml('collect', meta.server,
     '<span class="stat" id="storage"></span>' +
     '<button class="ctl primary" id="crawlBtn" title="갤러리에서 새 글을 가져와요"><span class="e">⟳</span><span class="t">새로 수집</span></button>' +
-    '<button class="ctl" id="export" title="모아둔 글을 파일로 내려받아요"><span class="e">↓</span><span class="t">내보내기</span></button>')}
+    '<button class="ctl" id="export" title="서재에 담은 글을 마크다운 zip 으로 내보내요"><span class="e">↑</span><span class="t">내보내기</span></button>')}
   <div class="hdr-tools">
   <div class="hdr-row search-row">
     <label class="search"><span class="ico">⌕</span>
@@ -617,7 +617,6 @@ ${CSS}</style></head><body>
   </div>
 </header>
 
-<section id="exportPanel" hidden></section>
 <section id="crawlPanel" hidden></section>
 <main id="list"></main>
 <div id="toast"></div>
@@ -694,68 +693,30 @@ function setLabel(no, cat){
   renderCats(); render();
 }
 
-var exportOpen = false;
-var EXPORTS = [
-  {kind:'md',   name:'마크다운 묶음',   ext:'zip',   desc:'글마다 .md 파일로 만들어 분류별 폴더에 담아 zip 하나로. 옵시디언 같은 데 넣어 읽기 좋아요.'},
-  {kind:'md-lib',name:'마크다운 (서재만)',ext:'zip', desc:'서재에 담아둔 글만 같은 형식으로. 원문이 지워진 글도 보존본에서 꺼내와요.'},
-  {kind:'full', name:'데이터셋',        ext:'jsonl', desc:'글 하나가 한 줄인 JSONL. 본문·댓글·원문 주소까지. 직접 분석할 때.'},
-  {kind:'meta', name:'데이터셋 (요약)',  ext:'jsonl', desc:'제목·날짜·지표·분류만. 통계 낼 때 가볍게.'},
-  {kind:'labels',name:'분류 라벨',      ext:'json',  desc:'내가 직접 고친 분류만. 다른 기기에 옮길 때 classify.mjs --import 로 넣어요.'}
-];
-
-function renderExport(){
-  var el = document.getElementById('exportPanel');
-  if (!exportOpen) { el.hidden = true; return; }
-  el.hidden = false;
-  var edited = posts.filter(function(p){ return p.ml }).length;
-  el.innerHTML = '<div class="glbox"><h3>내보내기</h3>'
-    + '<p class="d">모아둔 글을 파일로 받아요. 받은 파일은 이 도구가 다시 읽지는 않아요. 읽거나 보관하거나 남에게 줄 때 쓰세요.</p>'
-    + EXPORTS.map(function(x){
-        var n = x.kind==='labels' ? edited+'건' : (x.kind==='md-lib' ? meta.bookmarkCount+'건' : posts.length+'건');
-        return '<button class="job" data-kind="'+x.kind+'"><b>'+esc(x.name)
-          + ' <span class="g">'+n+' · .'+x.ext+'</span></b><span>'+esc(x.desc)+'</span></button>';
-      }).join('')
-    + '<p class="d" style="margin:12px 0 0">작성자 이름과 고유 id 는 어느 형식에도 들어가지 않아요.</p></div>';
-}
-
+/* ---------- 내보내기 ----------
+   서재에 담은 글을 분류별 폴더의 마크다운으로 만들어 zip 하나로 준다. */
 document.getElementById('export').addEventListener('click', function(e){
-  exportOpen = !exportOpen;
-  if (exportOpen) { crawlOpen = false; document.getElementById('crawlPanel').hidden = true;
-                    window.scrollTo({top:0, behavior:'smooth'}); }
-  e.target.closest('button').classList.toggle('on', exportOpen);
-  renderExport();
-});
-
-document.getElementById('exportPanel').addEventListener('click', function(e){
-  var b = e.target.closest('.job'); if(!b) return;
-  var kind = b.dataset.kind;
-
-  if (kind === 'labels') {          // 이건 화면 안에서 바로 만든다
-    var out = {version:1, updated_at:new Date().toISOString(), manual:{}};
-    posts.forEach(function(p){ if(p.ml) out.manual[p.no] = {category:p.ml, by:'viewer', at:new Date().toISOString()} });
-    var a2 = document.createElement('a');
-    a2.href = URL.createObjectURL(new Blob([JSON.stringify(out,null,2)], {type:'application/json'}));
-    a2.download = 'labels.json'; a2.click();
-    toast('분류 라벨을 내려받았어요.');
-    return;
+  var btn = e.target.closest('button');
+  if (!meta.server) {
+    toast('내보내기는 서버 모드에서만 돼요. node serve.mjs 로 실행해 주세요.', true); return;
   }
-  if (!meta.server) { toast('이 형식은 서버 모드에서만 받을 수 있어요. node serve.mjs 로 실행해 주세요.', true); return; }
-
-  var q = kind === 'md-lib' ? 'kind=md&scope=library' : 'kind=' + kind;
-  b.disabled = true;
-  toast('파일을 만드는 중이에요. 글이 많으면 몇 초 걸려요.');
-  fetch('/api/export?' + q)
-    .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); 
+  if (!meta.bookmarkCount) {
+    toast('서재가 비어 있어요. 글을 골라 서재에 담은 뒤 내보내 주세요.', true); return;
+  }
+  btn.disabled = true;
+  toast('서재 ' + meta.bookmarkCount + '건을 마크다운으로 만드는 중이에요.');
+  fetch('/api/export?kind=md&scope=library')
+    .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status);
       var cd = r.headers.get('content-disposition') || '';
       var m = cd.match(/filename\*=UTF-8''(.+)$/);
-      return r.blob().then(function(bl){ return {bl:bl, name: m ? decodeURIComponent(m[1]) : 'export'} }); })
+      return r.blob().then(function(bl){ return {bl:bl, name: m ? decodeURIComponent(m[1]) : 'export.zip'} }); })
     .then(function(x){
-      var a3 = document.createElement('a');
-      a3.href = URL.createObjectURL(x.bl); a3.download = x.name; a3.click();
+      var a2 = document.createElement('a');
+      a2.href = URL.createObjectURL(x.bl); a2.download = x.name; a2.click();
       toast(x.name + ' 을 내려받았어요.');
     })
     .catch(function(err){ toast('만들지 못했어요: '+err.message, true) })
-    .finally(function(){ b.disabled = false; });
+    .finally(function(){ btn.disabled = false; });
 });
 
 /* ---------- 필터 / 렌더 ---------- */

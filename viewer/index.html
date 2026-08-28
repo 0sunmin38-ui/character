@@ -29,6 +29,7 @@ body.resizing{cursor:col-resize;user-select:none}
 /* 접을 때 display:none 을 쓰면 그리드 아이템이 앞 칼럼으로 밀린다.
    칼럼 폭만 0 으로 두고 내용은 잘라낸다. */
 #app.nos #side,#app.noc #cart{overflow:hidden;border:none}
+#app.noc #rzR{pointer-events:none;opacity:0}
 header{grid-column:1/-1;display:flex;align-items:center;gap:4px;padding:0 12px;
   background:var(--panel);border-bottom:1px solid var(--line)}
 header .brand{font-weight:700;margin-right:12px;letter-spacing:-.3px}
@@ -517,7 +518,7 @@ function drawBuild(){
     <span class="sp" style="flex:1"></span>
     <button class="btn pri" id="cAll">전체 복사</button>
     <button class="btn" id="cNeg">부정만 복사</button>
-    ${saveBar('#b','장면 이름')}
+    ${saveBar('img','장면 이름')}
   </div>
   <h3 style="margin:0 0 6px">26슬롯</h3>
   ${SLOTS.map((s,n)=>`<div class="slot${by[n]?'':' empty'}">
@@ -532,7 +533,7 @@ function drawBuild(){
   $('#pQ').onchange=$('#pN').onchange=re;
   $('#cAll').onclick=()=>copy(assemble().full,'조립 결과');
   $('#cNeg').onclick=()=>copy(assemble().neg,'부정 프롬프트');
-  wireSave('#b', ()=>{
+  wireSave('img', ()=>{
     const a=assemble();
     return head({fmt:'태그', lang:'영어', count:a.full.length})
       +'\n\n## 프롬프트\n```\n'+a.full+'\n```\n\n## 부정 프롬프트\n```\n'+a.neg+'\n```\n';
@@ -562,18 +563,19 @@ async function saveDraft(name, content, kind){
     toast('서버가 쓰기를 지원하지 않아 내려받았습니다');
   }
 }
+/* id 에는 '#' 을 넣지 않는다 — 선택자는 wireSave 에서 만든다. */
 function saveBar(id, ph){
-  return `<input type="text" id="${id}n" placeholder="${ph}" style="min-width:150px">
-          <button class="btn" id="${id}s">99_작업중에 저장</button>`;
+  return `<input type="text" id="${id}-name" placeholder="${ph}" style="min-width:150px">
+          <button class="btn" id="${id}-save">99_작업중에 저장</button>`;
 }
 function wireSave(id, build, kind){
   const key='char.name.'+id;
-  const el=$(id+'n'); if(el) el.value=localStorage.getItem(key)||'';
-  $(id+'s').onclick=()=>{
-    const n=$(id+'n').value.trim();
-    localStorage.setItem(key,n);
-    saveDraft(n, build(), kind);
-  };
+  const nameEl=$('#'+id+'-name'), btn=$('#'+id+'-save');
+  if(!nameEl||!btn){ console.warn('saveBar 미연결:',id); return; }
+  nameEl.value = localStorage.getItem(key) || '';
+  nameEl.oninput = () => localStorage.setItem(key, nameEl.value);   /* 재렌더에도 이름 유지 */
+  nameEl.onkeydown = e => { if(e.key==='Enter') btn.click(); };
+  btn.onclick = () => saveDraft(nameEl.value.trim(), build(), kind);
 }
 /* 파일 머리말 — 03_프롬프트/README 의 규칙 */
 function head(o){
@@ -633,7 +635,7 @@ function drawWrite(){
       <span class="muted">순서가 곧 우선순위 · Anchor 를 맨 위에</span>
       <span class="sp" style="flex:1"></span>
       <button class="btn pri" id="wcopy">프롬프트 복사</button>
-      ${saveBar('#w','캐릭터 이름')}
+      ${saveBar('bot','캐릭터 이름')}
       <button class="btn" id="wclear">비우기</button>
     </div>
     <div class="sum">
@@ -685,7 +687,7 @@ function drawWrite(){
   });
   $('#lim').oninput=sync;
   $('#wcopy').onclick=()=>copy(botAssemble(botLoad()),'프롬프트');
-  wireSave('#w', ()=>{
+  wireSave('bot', ()=>{
     const out=botAssemble(botLoad()), c=countOf(out);
     return head({fmt:'블록', count:c.ch, limit:+($('#lim').value||0)})+'\n\n'+out+'\n';
   }, 'bot');
@@ -850,6 +852,11 @@ const groupOf = t => t==='read' ? 'read'
 function setGroup(g){
   S.group=g;
   document.querySelectorAll('.grp-t').forEach(b=>b.classList.toggle('on',b.dataset.g===g));
+  /* 담은 태그는 26슬롯 조립용이라 이미지 그룹에서만 쓴다.
+     다른 그룹에선 숨기되, 사용자가 직접 접어둔 설정은 건드리지 않는다. */
+  const img = g==='img';
+  app.classList.toggle('noc', !img || cartPref());
+  $('#tgC').hidden = !img;
   const subs=GROUPS[g].subs;
   $('#subsep').hidden = !subs.length;
   $('#subs').innerHTML = subs.map(([k,n],i)=>
@@ -876,10 +883,14 @@ const MINW=150, MAXW=560;   /* 패널 최소·최대 너비 */
   if(sw) app.style.setProperty('--sw',sw);
   if(cw) app.style.setProperty('--cw',cw);
   try{ const st=JSON.parse(localStorage.getItem(LS.ps))||{};
-    if(st.s) app.classList.add('nos'); if(st.c) app.classList.add('noc'); }catch{}
+    if(st.s) app.classList.add('nos'); }catch{}
+  app.classList.add('noc');            /* 첫 화면은 읽기 그룹 — 담은 태그 숨김 */
 })();
 const savePanels=()=>localStorage.setItem(LS.ps,
-  JSON.stringify({s:app.classList.contains('nos'),c:app.classList.contains('noc')}));
+  JSON.stringify({s:app.classList.contains('nos'),
+                  c:(S.group==='img') ? app.classList.contains('noc') : cartPref()}));
+/* 이미지 그룹에서 사용자가 담은 태그를 접어뒀는지 */
+function cartPref(){ try{ return !!(JSON.parse(localStorage.getItem(LS.ps))||{}).c; }catch{ return false; } }
 
 function drag(el, which){
   el.onmousedown = e => {
