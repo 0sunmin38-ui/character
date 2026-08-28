@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>character — 작업 뷰어</title>
+<!-- 저장소 루트로 들어와도 뷰어가 열리게 한다.
+     .../<저장소>/ → .../<저장소>/viewer/ -->
+<meta http-equiv="refresh" content="0; url=viewer/">
+<link rel="canonical" href="viewer/">
+<style>
+  body{margin:0;height:100vh;display:grid;place-items:center;background:#faf9f7;color:#2b2723;
+    font:14px/1.6 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",system-ui,sans-serif}
+  @media(prefers-color-scheme:dark){body{background:#17161a;color:#e8e5e0}}
+  a{color:#7c5cff}
+</style>
+</head>
+<body>
+  <p>작업 뷰어로 이동합니다… 안 넘어가면 <a href="viewer/">viewer/</a> 를 누르세요.</p>
+  <script>location.replace('viewer/');</script>
+</body>
+</html>

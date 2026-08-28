@@ -5,6 +5,9 @@ data/
 # 리포트 HTML. 수집한 글이 통째로 박혀 있습니다.
 out/
 
+# docs/ 는 GitHub Pages 용으로 일부러 커밋합니다 (node pages.mjs 로 만듦).
+# 닉네임·uid·IP 를 뺀 읽기 전용 사본이고 noindex 가 걸려 있습니다.
+
 # 공개용 내보내기 결과. 직접 확인하고 올릴 것.
 public/
 

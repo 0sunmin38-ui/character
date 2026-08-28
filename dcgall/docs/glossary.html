@@ -1,0 +1,686 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>은어 사전 · aichatting</title>
+<style>
+
+:root{
+  --bg:#f5f8fc; --panel:#fff; --sunken:#eef3fa;
+  --ink:#152232; --ink2:#3d5068; --dim:#7488a0; --faint:#9aabc0;
+  --line:#dde6f1; --line2:#eaf0f7;
+  --accent:#2166cf; --accent-h:#1a55b0; --accent-w:#e7f0fd; --accent-b:#b9d3f7;
+  --chip:#eef3fa; --hi:#ffeeb0; --ok:#1d7f5e; --warn:#b3781a; --bad:#c0413c;
+  --ctl:34px; --r:8px; --r-sm:5px;   /* r=입력·버튼 / r-sm=칩·세그먼트 */
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#0e141d; --panel:#161e2a; --sunken:#111925;
+  --ink:#e8eff8; --ink2:#c2d0e2; --dim:#8497ae; --faint:#6b7e96;
+  --line:#243244; --line2:#1c2735;
+  --accent:#5b9df5; --accent-h:#7ab0f8; --accent-w:#16283f; --accent-b:#2f4d73;
+  --chip:#1c2735; --hi:#5a4a12; --ok:#5fc79b; --warn:#dfb457; --bad:#e2726c;
+}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+ font:14px/1.6 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",Pretendard,"Segoe UI",sans-serif;
+ -webkit-font-smoothing:antialiased}
+a{color:var(--accent)}
+mark{background:var(--hi);color:#152232;border-radius:2px;padding:0 1px}
+img,video{max-width:100%}
+
+/* ── 컨트롤 공통 ─────────────────────────────────────────── */
+.ctl{height:var(--ctl);border:1px solid var(--line);background:var(--panel);color:var(--ink2);
+ border-radius:var(--r);padding:0 12px;font:inherit;font-size:13px;line-height:1;vertical-align:middle}
+button.ctl{cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;transition:.12s}
+/* 폭이 부족하면 글자를 이모지로 대체한다 — .t 는 글자, .e 는 이모지 */
+.e{display:none}
+.t{display:inline}
+button.ctl:hover{border-color:var(--accent-b);background:var(--accent-w);color:var(--accent)}
+button.ctl.on{background:var(--accent);border-color:var(--accent);color:#fff}
+button.ctl.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button.ctl.primary:hover{background:var(--accent-h);border-color:var(--accent-h);color:#fff}
+button.ctl:disabled{opacity:.55;cursor:default}
+select.ctl{cursor:pointer;padding-right:28px;
+ background-image:linear-gradient(45deg,transparent 50%,var(--dim) 50%),linear-gradient(135deg,var(--dim) 50%,transparent 50%);
+ background-position:calc(100% - 15px) 15px,calc(100% - 10px) 15px;background-size:5px 5px;background-repeat:no-repeat;
+ -webkit-appearance:none;appearance:none}
+select.ctl:hover{border-color:var(--accent-b)}
+.vlabel{font-size:10.5px;color:var(--faint);letter-spacing:.08em;font-weight:700;flex:none;width:34px;text-transform:uppercase}
+.count{font-size:12px;color:var(--dim);font-variant-numeric:tabular-nums;margin-left:auto;white-space:nowrap}
+
+/* ── 헤더 ────────────────────────────────────────────────── */
+.hdr{position:sticky;top:0;z-index:30;background:var(--panel);border-bottom:1px solid var(--line);
+ box-shadow:0 1px 3px rgba(21,34,50,.04)}
+/* 도구 영역 펼침 버튼 — 옆의 기능 버튼(.ctl)과 헷갈리지 않게 테두리 없는 아이콘으로 둔다 */
+button.disclose{display:none;border:none;background:none;color:var(--dim);cursor:pointer;padding:0;
+ width:34px;height:34px;align-items:center;justify-content:center;border-radius:var(--r);transition:.12s}
+button.disclose:hover{color:var(--accent);background:var(--accent-w)}
+button.disclose i{display:block;width:9px;height:9px;margin-top:-4px;
+ border-right:1.8px solid currentColor;border-bottom:1.8px solid currentColor;
+ transform:rotate(45deg);transition:transform .18s,margin .18s}
+.hdr.open button.disclose i{transform:rotate(-135deg);margin-top:3px}
+.hdr-top{display:flex;align-items:center;gap:20px;padding:0 28px;height:64px}   /* GNB — 두 페이지 공통, 높이 고정 */
+.brand{display:flex;flex-direction:column;min-width:0;gap:3px}
+.brand b{font-size:15.5px;letter-spacing:-.015em;line-height:1.25;color:var(--ink)}
+.brand span{font-size:11.5px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:56ch}
+.nav{display:flex;gap:4px;align-self:stretch;align-items:stretch;margin-left:14px}
+.nav a{padding:0 17px;display:flex;align-items:center;font-size:13.5px;color:var(--dim);
+ text-decoration:none;border-bottom:2px solid transparent;transition:.12s}
+.nav a:hover{color:var(--accent);background:var(--accent-w)}
+.nav a.active{color:var(--accent);font-weight:600;border-bottom-color:var(--accent)}
+.hdr-actions{margin-left:auto;display:flex;gap:8px;flex:none;align-items:center;min-height:var(--ctl)}
+/* GNB 우측 정보 표시 — 버튼과 같은 높이라 페이지를 오가도 바가 흔들리지 않는다 */
+.stat{height:var(--ctl);display:inline-flex;align-items:center;padding:0 12px;border-radius:var(--r);
+ background:var(--sunken);border:1px solid var(--line2);color:var(--dim);font-size:11.5px;
+ white-space:nowrap;font-variant-numeric:tabular-nums}
+
+.hdr-tools{border-top:1px solid var(--line2)}
+.hdr-row{display:flex;gap:10px;align-items:center;padding:0 28px 14px;flex-wrap:wrap}
+.hdr-row:first-child{padding-top:14px}
+.hdr-row.tight{padding-bottom:12px}
+/* 보기·분류 행은 줄바꿈 금지. 여백 → 컴포넌트 폭 → 개수 표시 순으로 줄인다. */
+.hdr-row.view-row,.hdr-row.cat-row{flex-wrap:nowrap}
+.hdr-row+.hdr-row{border-top:1px solid var(--line2);padding-top:13px}
+
+/* 검색줄은 줄바꿈을 막아 두고 '축소'로 먼저 버틴다.
+   flexbox 는 flex-basis 합이 넘치면 축소하기 전에 줄부터 바꿔버리기 때문에,
+   nowrap 이어야 (1)검색창 → (2)드롭다운 순서로 줄어든다. */
+.hdr-row.search-row{flex-wrap:nowrap}
+.search{position:relative;display:flex;align-items:center;
+ flex:1 1 auto;min-width:118px}           /* 여유가 있으면 늘고, 부족하면 가장 먼저 줄어든다 */
+.search input{width:100%;height:var(--ctl);padding:0 13px 0 34px;border:1px solid var(--line);
+ border-radius:var(--r);background:var(--sunken);color:var(--ink);font:inherit;font-size:13.5px;transition:.12s}
+.search input:focus{outline:none;border-color:var(--accent);background:var(--panel);
+ box-shadow:0 0 0 3px var(--accent-w)}
+.search .ico{position:absolute;left:12px;color:var(--faint);font-size:14px;pointer-events:none}
+.filters{display:flex;gap:8px;flex:0 1 auto;min-width:0}   /* 검색창이 한계에 닿은 뒤 줄어든다 */
+.filters .ctl{flex:0 1 auto;min-width:78px;text-overflow:ellipsis}
+.segwrap{min-width:0;display:flex}
+/* 둘 다 최소폭에 닿는 420px 이하에서만 비로소 2줄로 내려간다 */
+@media (max-width:420px){
+  .hdr-row.search-row{flex-wrap:wrap}
+  .search{flex:1 1 100%}
+  .filters{flex:1 1 100%}
+  .filters .ctl{flex:1 1 auto}
+}
+
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:var(--r-sm);overflow:hidden;background:var(--panel)}
+.seg button{border:none;background:none;color:var(--dim);font:inherit;font-size:12.5px;
+ padding:0 14px;height:32px;cursor:pointer;border-right:1px solid var(--line);white-space:nowrap;transition:.12s}
+.seg{flex:0 1 auto;min-width:0}
+.seg button:last-child{border-right:none}
+.seg button:hover{background:var(--accent-w);color:var(--accent)}
+.seg button.on{background:var(--accent);color:#fff}
+
+/* 분류 탭 — 절대 2줄로 넘기지 않는다 */
+.scrollrow{position:relative;flex:1;min-width:0}
+.cats{display:flex;flex-wrap:nowrap;gap:7px;overflow-x:auto;scroll-behavior:smooth;padding:2px 0;
+ scrollbar-width:none;-ms-overflow-style:none}
+.cats::-webkit-scrollbar{display:none}
+.scrollrow::before,.scrollrow::after{content:'';position:absolute;top:0;bottom:0;width:26px;
+ pointer-events:none;z-index:2;opacity:0;transition:opacity .15s}
+.scrollrow::before{left:0;background:linear-gradient(90deg,var(--panel),transparent)}
+.scrollrow::after{right:0;background:linear-gradient(270deg,var(--panel),transparent)}
+.scrollrow.l::before{opacity:1}
+.scrollrow.r::after{opacity:1}
+.arrow{flex:none;width:26px;height:26px;border:1px solid var(--line);background:var(--panel);color:var(--dim);
+ border-radius:var(--r-sm);cursor:pointer;font-size:14px;line-height:1;display:none;align-items:center;justify-content:center;padding:0}
+.arrow:hover{border-color:var(--accent);color:var(--accent)}
+.arrow.show{display:flex}
+.cat{font-size:12.5px;border:1px solid var(--line);background:var(--panel);border-radius:var(--r-sm);
+ padding:5px 14px;cursor:pointer;white-space:nowrap;flex:none;line-height:1.25;color:var(--ink2);transition:.12s}
+.cat:hover{border-color:var(--accent-b);color:var(--accent)}
+.cat.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.cat .n{opacity:.6;margin-left:6px;font-variant-numeric:tabular-nums;font-size:11px}
+
+/* ── 목록: 제목만 선명하게, 나머지는 압축 ──────────────────── */
+main{padding:18px 28px 90px;max-width:1080px;margin:0 auto}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:9px;
+ padding:9px 13px 8px;margin-bottom:6px;transition:.12s}
+.card:hover{border-color:var(--accent-b)}
+.card.edited{box-shadow:inset 3px 0 0 var(--ok)}
+.card.amb{box-shadow:inset 3px 0 0 var(--warn)}
+.card.gone{box-shadow:inset 3px 0 0 var(--bad)}
+.card.picked{background:var(--accent-w);border-color:var(--accent)}
+
+/* 카드는 늘 2행. 1행 = 제목, 2행 = 부속 정보 */
+.row{display:flex;gap:8px;align-items:center;flex-wrap:nowrap}
+.row.r2{gap:7px;margin-top:4px;line-height:1.35}
+.row.r1 .go{margin-left:auto;flex:none;font-size:11.5px;white-space:nowrap;text-decoration:none}
+.row.r1 .go:hover{text-decoration:underline}
+.row.r2 .nums{margin-left:auto;flex:none}
+.row.r2 .date{flex:none}
+.ttl{font-weight:600;font-size:14px;line-height:1.4;letter-spacing:-.01em;color:var(--ink);
+ cursor:pointer;flex:1 1 0;min-width:0;
+ white-space:nowrap;overflow:hidden;text-overflow:ellipsis}   /* 넘치면 … 로 자른다 */
+.card.open .ttl{white-space:normal;overflow:visible}          /* 펼치면 전문을 보여준다 */
+.ttl:hover{color:var(--accent)}
+.row.r2 .chip,.row.r2 .metrics{font-size:11px}
+.chip{font-size:11px;color:var(--dim);background:var(--chip);border-radius:var(--r-sm);
+ padding:1px 8px;white-space:nowrap;line-height:1.55;flex:0 1 auto;min-width:0;
+ overflow:hidden;text-overflow:ellipsis}
+.metrics{font-size:11.5px;color:var(--dim);white-space:nowrap;font-variant-numeric:tabular-nums;min-width:0}
+.metrics b{color:var(--accent);font-weight:600}
+.pick{font-size:11.5px;height:24px;padding:0 6px;border-radius:6px;max-width:126px;min-width:0;
+ border:1px solid var(--line);background:var(--sunken);color:var(--dim);cursor:pointer;flex:none}
+.pick:hover{border-color:var(--accent-b);color:var(--accent)}
+.sel{width:15px;height:15px;accent-color:var(--accent);cursor:pointer;flex:none}
+.inlib{color:#e0a52b;font-size:13px;line-height:1;flex:none}   /* 서재에 담긴 글 표식 (읽기 전용) */
+.card{cursor:pointer}                                          /* 로우 전체가 선택 영역 */
+.ttl,.pick,.body,.card a{cursor:auto}
+.ttl{cursor:pointer}
+
+.body{display:none;margin-top:9px;padding-top:9px;border-top:1px solid var(--line2)}
+.card.open .body{display:block}
+.txt{white-space:pre-wrap;word-break:break-word;font-size:13px;line-height:1.72;color:var(--ink2)}
+.why{font-size:11px;color:var(--faint);margin-top:7px;line-height:1.5}
+.imgs{display:flex;gap:6px;flex-wrap:wrap;margin:9px 0}
+.imgs img{max-height:140px;border-radius:7px;border:1px solid var(--line)}
+.cmts{margin-top:9px;border-top:1px solid var(--line2);padding-top:6px}
+.cmt{font-size:12.5px;line-height:1.55;padding:3px 0;border-bottom:1px solid var(--line2);color:var(--ink2)}
+.cmt:last-child{border-bottom:none}
+.cmt.re{padding-left:18px;color:var(--dim)}
+.cmt .n{color:var(--faint);margin-right:6px;font-size:11px}
+.empty{color:var(--dim);text-align:center;padding:80px 20px;font-size:13.5px;line-height:1.8}
+.gonebadge{background:var(--bad);color:#fff;border-radius:var(--r-sm);font-size:10.5px;padding:1px 8px;font-weight:600}
+
+/* ── 선택 바 ─────────────────────────────────────────────── */
+#selbar{display:none;align-items:center;gap:8px;flex-wrap:nowrap;overflow-x:auto;font-size:13px;
+ scrollbar-width:none;
+ background:var(--accent);color:#fff;padding:11px 28px;border-top:1px solid rgba(255,255,255,.2)}
+#selbar.show{display:flex}
+#selbar::-webkit-scrollbar{display:none}
+#selbar>*{flex:none}
+#selbar select{flex:0 1 auto;min-width:62px}   /* 폭이 없으면 드롭다운부터 줄인다 */
+#selbar input{flex:1 1 90px;min-width:64px}
+#selbar .selcount{white-space:nowrap}
+#selbar .n{font-weight:700}
+#selbar button,#selbar select,#selbar input{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.4);
+ color:#fff;border-radius:var(--r);padding:0 11px;height:31px;font:inherit;font-size:12.5px;white-space:nowrap}
+#selbar button{cursor:pointer;transition:.12s}
+#selbar button:hover{background:rgba(255,255,255,.3)}
+#selbar select option{color:#111}
+#selbar .n{font-weight:700}
+#selbar .divider{opacity:.4}
+#selTag{width:175px}
+#prog{flex:1 1 90px !important;min-width:70px;height:6px;background:rgba(255,255,255,.25);border-radius:99px;overflow:hidden;display:none}
+#prog.show{display:block}
+#prog i{display:block;height:100%;background:#fff;width:0;transition:width .3s}
+
+/* ── 사전 패널 ───────────────────────────────────────────── */
+#crawlPanel,#glPanel{max-width:1080px;margin:16px auto 0;padding:0 28px}
+.pbar{height:7px;background:var(--sunken);border-radius:99px;overflow:hidden;margin:10px 0 7px;border:1px solid var(--line)}
+.pbar i{display:block;height:100%;background:var(--accent);width:0;transition:width .3s}
+.jobseg{margin-bottom:11px}
+.jobseg button{padding:0 13px;height:29px;font-size:12.5px}
+.jobdesc{margin:0 0 4px}
+.runrow{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:14px;
+ border-top:1px solid var(--line2);padding-top:13px}
+.runrow .why{margin:0}
+.kwbox{border-top:1px solid var(--line2);margin-top:13px;padding-top:13px}
+.kwhead{display:flex;gap:9px;align-items:baseline;flex-wrap:wrap;font-size:13px;font-weight:600;margin-bottom:9px}
+.kwhead .g{font-weight:400;font-size:11.5px;color:var(--dim)}
+.kwopt{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:11px;font-size:11.5px;color:var(--dim)}
+.kwopt label{display:flex;gap:6px;align-items:center}
+.kwopt select{height:26px;padding:0 7px;font-size:11.5px;border-radius:var(--r-sm);
+ border:1px solid var(--line);background:var(--panel);color:var(--ink)}
+.plog{font-size:11.5px;color:var(--dim);line-height:1.7;max-height:132px;overflow-y:auto;
+ font-family:ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap}
+.glbox{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin-bottom:12px}
+.glbox h3{margin:0 0 9px;font-size:13.5px;display:flex;align-items:center;gap:9px;flex-wrap:wrap;color:var(--ink)}
+.glbox h3 .g{color:var(--dim);font-weight:400;font-size:12px}
+.glbox p.d{margin:0 0 12px;font-size:12px;color:var(--dim);line-height:1.65}
+.glgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:6px}
+.gterm{font-size:12px;border:1px solid var(--line);border-radius:7px;padding:6px 10px;background:var(--sunken);line-height:1.5}
+.gterm b{color:var(--ink)}
+.gterm .g{color:var(--dim)}
+.cand{display:grid;grid-template-columns:minmax(90px,auto) 1fr auto;gap:10px;align-items:center;
+ border-bottom:1px solid var(--line2);padding:7px 0;font-size:12.5px}
+.cand .word{font-weight:600;color:var(--ink)}
+.cand .meta{color:var(--dim);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cand .act{display:flex;gap:5px;align-items:center}
+.cand select,.cand input{height:28px;padding:0 8px;font-size:12px;border-radius:6px;
+ border:1px solid var(--line);background:var(--sunken);color:var(--ink)}
+.cand input{width:150px}
+.cand button{height:28px;padding:0 11px;font-size:12px;border-radius:6px;cursor:pointer;
+ border:1px solid var(--line);background:var(--panel);color:var(--ink2);transition:.12s}
+.cand button:hover{border-color:var(--accent);color:var(--accent)}
+#mineBtn{border-color:var(--accent-b);color:var(--accent);background:var(--accent-w)}
+
+/* ── 서재 전용 ───────────────────────────────────────────── */
+.note{width:100%;margin-top:7px;font-size:12.5px;min-height:32px;resize:vertical;line-height:1.6;
+ border:1px solid var(--line);border-radius:7px;background:var(--sunken);color:var(--ink2);
+ padding:6px 9px;font-family:inherit}
+.note:focus{outline:none;border-color:var(--accent);background:var(--panel)}
+.tagbar{display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-top:6px}
+.tag.ref{background:var(--sunken);border-style:dashed}
+.tag.ref .g{opacity:.65;margin-left:3px}
+.tag{font-size:11px;background:var(--accent-w);border:1px solid var(--accent-b);color:var(--accent);
+ border-radius:var(--r-sm);padding:1px 9px;cursor:pointer;line-height:1.6}
+.tag .x{opacity:.55;margin-left:5px}
+.tagin{font-size:11.5px;padding:1px 10px;width:104px;border-radius:var(--r-sm);border:1px dashed var(--line);
+ background:transparent;color:var(--ink)}
+.tagin:focus{outline:none;border-color:var(--accent);border-style:solid}
+
+#toast{position:fixed;right:20px;bottom:20px;background:var(--panel);border:1px solid var(--line);
+ border-left:3px solid var(--ok);border-radius:9px;padding:11px 16px;font-size:12.5px;opacity:0;
+ transition:opacity .2s;pointer-events:none;z-index:99;box-shadow:0 8px 26px rgba(21,34,50,.16);color:var(--ink)}
+#toast.show{opacity:1}
+
+/* ═══ 반응형 ═════════════════════════════════════════════════
+   1080↓ 여백 축소 · 900↓ GNB 2단 + 헤더 스크롤아웃 + 하단 액션바
+   700↓  카드 제목 단독 줄 · 480↓ 최소 여백                     */
+
+/* ① 여백부터 */
+@media (max-width:820px){
+  .hdr-row.view-row,.hdr-row.cat-row{gap:7px}
+  .seg button{padding:0 11px}
+}
+/* ② 컴포넌트 폭 */
+@media (max-width:600px){
+  .seg button{padding:0 8px;font-size:12px}
+  .hdr-row.view-row,.hdr-row.cat-row{gap:6px}
+  .cat{padding:5px 10px}
+}
+/* ③ 마지막으로 개수 표시를 버린다 */
+@media (max-width:430px){
+  .count{display:none}
+  .cat .n{display:none}
+  .seg button{padding:0 7px;font-size:11.5px}
+}
+
+@media (max-width:1080px){
+  .hdr-top{padding:0 20px}
+  .hdr-row{padding:0 20px 12px}
+  .hdr-row:first-child{padding-top:12px}
+  main{padding:16px 20px 90px}
+  #glPanel{padding:0 20px}
+  #selbar{padding:11px 20px}
+  .brand span{max-width:40ch}
+}
+
+@media (max-width:900px){
+  :root{--ctl:38px}                      /* 터치 타겟 확보 */
+  /* GNB 는 언제나 고정. 대신 아래 도구 영역을 접을 수 있게 해서 화면을 안 먹는다. */
+  button.disclose{display:inline-flex}
+  .hdr-tools{display:none}
+  .hdr.open .hdr-tools{display:block}
+  .hdr-top{height:auto;min-height:56px;flex-wrap:wrap;gap:10px;padding:10px 16px 0;
+    border-bottom:1px solid var(--line2)}
+  .brand{order:1;flex:1 1 auto;min-width:0}
+  .brand b{font-size:14.5px}
+  .brand span{font-size:11px;max-width:100%}
+  .hdr-actions{order:2;margin-left:auto;flex-shrink:0}
+  .hdr-actions .stat{display:none}
+  .nav{order:3;flex:1 0 100%;margin:0 -16px;padding:0 16px;border-top:1px solid var(--line2)}
+  .nav a{flex:1;justify-content:center;height:44px;padding:0}
+
+  .hdr-tools{border-top:none}
+  .hdr-row{padding:0 16px 10px;gap:8px}
+  .hdr-row:first-child{padding-top:12px}
+  .hdr-row+.hdr-row{padding-top:10px}
+  .vlabel{display:none}                  /* 라벨 대신 순서로 구분 */
+  /* 보기 토글은 항목 수가 고정이라 가로 스크롤이 낫다 */
+  .segwrap{flex:1 1 100%;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none;
+    padding-bottom:2px;-webkit-overflow-scrolling:touch}
+  .segwrap::-webkit-scrollbar{display:none}
+  .seg{flex:none}
+  .count{margin-left:0;flex:0 0 auto}
+
+  main{padding:14px 16px 96px}
+  #glPanel{padding:0 16px}
+  .glgrid{grid-template-columns:1fr}
+  .cand{grid-template-columns:1fr;gap:6px;padding:10px 0}
+  .cand .act{flex-wrap:wrap}
+  .cand input{flex:1;min-width:120px;width:auto}
+
+  /* 선택 바는 화면 하단 고정 — 목록을 가리지 않는다 */
+  /* 좁은 화면에선 헤더가 흘러가므로 선택 바만 화면 하단에 고정 */
+  #selbar{position:fixed;bottom:0;left:0;right:0;z-index:60;padding:10px 16px;
+    gap:8px;border-top:none;box-shadow:0 -3px 14px rgba(21,34,50,.22);
+    padding-bottom:calc(10px + env(safe-area-inset-bottom))}
+  #selbar.show{display:flex}
+  #selbar input{width:auto;flex:1;min-width:120px}
+  #prog{flex:1 0 100%;order:9}
+  #toast{left:16px;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));text-align:center}
+}
+
+/* 카드 축소 사다리
+   ① 여백  ② 컴포넌트 폭·말줄임  ③ 부가 정보를 덜 중요한 순서로 제거
+   제거 순서: 조회 → 댓글 → 원문 글자 → 말머리 칩 → 추천 → 날짜
+   끝까지 남는 것: 체크박스 · 제목 · 분류 드롭다운 · 원문 화살표 */
+@media (max-width:760px){
+  .card .row{gap:6px}
+  .pick{max-width:112px}
+}
+@media (max-width:600px){
+  .pick{max-width:96px;font-size:11px}
+  .chip{max-width:88px}
+  .m-view,.kept{display:none}
+}
+@media (max-width:460px){
+  .card .row{gap:5px}
+  .pick{max-width:84px}
+  .m-cmt{display:none}
+  .row.r1 .go{font-size:0}
+  .row.r1 .go::after{content:'↗';font-size:13px}
+}
+@media (max-width:370px){
+  .row.r2 .chip{display:none}
+}
+@media (max-width:340px){
+  .row.r2 .nums{display:none}          /* 추천까지 내려놓는다 */
+}
+@media (max-width:310px){
+  .row.r2 .date{display:none}          /* 마지막으로 날짜 */
+}
+
+@media (max-width:1080px){
+  .hdr-top{padding:0 20px}
+  .hdr-row{padding:0 20px 12px}
+  .hdr-row:first-child{padding-top:12px}
+  main{padding:16px 20px 90px}
+  #glPanel{padding:0 20px}
+  #selbar{padding:11px 20px}
+  .brand span{max-width:40ch}
+}
+
+@media (max-width:900px){
+  :root{--ctl:38px}                      /* 터치 타겟 확보 */
+  /* GNB 는 언제나 고정. 대신 아래 도구 영역을 접을 수 있게 해서 화면을 안 먹는다. */
+  button.disclose{display:inline-flex}
+  .hdr-tools{display:none}
+  .hdr.open .hdr-tools{display:block}
+  .hdr-top{height:auto;min-height:56px;flex-wrap:wrap;gap:10px;padding:10px 16px 0;
+    border-bottom:1px solid var(--line2)}
+  .brand{order:1;flex:1 1 auto;min-width:0}
+  .brand b{font-size:14.5px}
+  .brand span{font-size:11px;max-width:100%}
+  .hdr-actions{order:2;margin-left:auto;flex-shrink:0}
+  .hdr-actions .stat{display:none}
+  .nav{order:3;flex:1 0 100%;margin:0 -16px;padding:0 16px;border-top:1px solid var(--line2)}
+  .nav a{flex:1;justify-content:center;height:44px;padding:0}
+
+  .hdr-tools{border-top:none}
+  .hdr-row{padding:0 16px 10px;gap:8px}
+  .hdr-row:first-child{padding-top:12px}
+  .hdr-row+.hdr-row{padding-top:10px}
+  .vlabel{display:none}                  /* 라벨 대신 순서로 구분 */
+  /* 보기 토글은 항목 수가 고정이라 가로 스크롤이 낫다 */
+  .segwrap{flex:1 1 100%;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none;
+    padding-bottom:2px;-webkit-overflow-scrolling:touch}
+  .segwrap::-webkit-scrollbar{display:none}
+  .seg{flex:none}
+  .count{margin-left:0;flex:0 0 auto}
+
+  main{padding:14px 16px 96px}
+  #glPanel{padding:0 16px}
+  .glgrid{grid-template-columns:1fr}
+  .cand{grid-template-columns:1fr;gap:6px;padding:10px 0}
+  .cand .act{flex-wrap:wrap}
+  .cand input{flex:1;min-width:120px;width:auto}
+
+  /* 선택 바는 화면 하단 고정 — 목록을 가리지 않는다 */
+  /* 좁은 화면에선 헤더가 흘러가므로 선택 바만 화면 하단에 고정 */
+  #selbar{position:fixed;bottom:0;left:0;right:0;z-index:60;padding:10px 16px;
+    gap:8px;border-top:none;box-shadow:0 -3px 14px rgba(21,34,50,.22);
+    padding-bottom:calc(10px + env(safe-area-inset-bottom))}
+  #selbar.show{display:flex}
+  #selbar input{width:auto;flex:1;min-width:120px}
+  #prog{flex:1 0 100%;order:9}
+  #toast{left:16px;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));text-align:center}
+}
+
+@media (max-width:760px){
+  .card .row{gap:6px}                     /* ① 여백 */
+  .pick{max-width:112px}                  /* ② 컴포넌트 폭 */
+}
+@media (max-width:560px){
+  .pick{max-width:96px;font-size:11px}
+  .card .row>.chip{max-width:84px;overflow:hidden;text-overflow:ellipsis}
+}
+@media (max-width:430px){
+  .m-view,.m-cmt{display:none}            /* ③ 개수 표시부터 버린다 */
+  .pick{max-width:84px}
+  .card .row{gap:5px}
+}
+
+@media (max-width:700px){
+  /* 폭이 부족하면 GNB 버튼 글자를 이모지로 바꾼다 (하단바는 이미 짧은 낱말이라 그대로) */
+  .hdr-actions .t{display:none}
+  .hdr-actions .e{display:inline;font-size:15px;line-height:1}
+  .hdr-actions button.ctl{gap:0;padding:0 11px}
+  .brand span{display:none}              /* 부가 정보 먼저 버린다 */
+
+  .card{padding:10px 12px 9px}
+  .sel{width:17px;height:17px}
+  .imgs img{max-height:120px}
+  .empty{padding:56px 16px}
+}
+
+@media (max-width:480px){
+  /* 폭이 정말 없으면 브랜드를 통째로 지운다 — 현재 위치는 탭이 알려준다 */
+  .hdr-top{padding:9px 12px 0;gap:6px;min-height:44px}
+  .brand{display:none}
+  .hdr-actions{gap:5px;margin-left:auto}   /* 이름이 사라져도 아이콘은 우측에 유지 */
+  .hdr-actions .ctl{padding:0 9px;height:32px}
+  .nav{margin:0 -12px;padding:0 12px}
+  .nav a{height:42px;font-size:13px}
+  .hdr-row{padding:0 12px 9px}
+  .hdr-row:first-child{padding-top:10px}
+  main{padding:12px 12px 96px}
+  #glPanel{padding:0 12px}
+  /* 하단바를 한 줄에 담기 위해 군더더기부터 덜어낸다 */
+  #selbar{padding:9px 10px;gap:6px;padding-bottom:calc(9px + env(safe-area-inset-bottom))}
+  #selbar .t2,#selbar .divider{display:none}
+  #selbar button,#selbar select,#selbar input{padding:0 8px;font-size:12px}
+  .brand b{font-size:14px}
+  .card{padding:9px 11px 8px;border-radius:8px}
+  .ttl{font-size:13.5px}
+  .txt{font-size:12.5px}
+  .glbox{padding:13px 14px}
+}
+
+/* 마우스가 없는 기기에선 스크롤 화살표가 의미 없다 */
+@media (hover:none){ .arrow{display:none !important} }
+
+
+</style></head><body>
+<div style="background:#fff4e5;border-bottom:1px solid #f0d9b5;color:#7a5a1e;
+ font:13px/1.6 -apple-system,'Apple SD Gothic Neo',sans-serif;padding:9px 20px;text-align:center">
+ 읽기 전용으로 올린 화면이에요. 수집·서재 담기·사전 편집은 내 컴퓨터에서 <b>node serve.mjs</b> 로 실행할 때만 됩니다.
+</div>
+<header class="hdr">
+  <div class="hdr-top">
+    <div class="brand"><b id="h1">갤수집기</b><span id="sub"></span></div>
+    <nav class="nav">
+      <a href="index.html">수집</a>
+      <a href="library.html">서재</a>
+      <a href="glossary.html" class="active">사전</a>
+    </nav>
+    <div class="hdr-actions">
+      <span class="stat" id="stat"></span><button class="ctl primary" id="mineBtn" title="저장된 글에서 새 은어 후보를 찾아요"><span class="e">⟳</span><span class="t">지금 채굴</span></button>
+      <button class="disclose" id="toolsBtn" aria-label="검색·필터 펼치기" title="검색·필터 펼치기"><i></i></button>
+    </div>
+  </div>
+  <div class="hdr-tools">
+    <div class="hdr-row search-row">
+      <label class="search"><span class="ico">⌕</span>
+        <input type="search" id="q" placeholder="용어 · 뜻 · 후보 검색"></label>
+    </div>
+    <div class="hdr-row tight cat-row">
+      <span class="vlabel">보기</span>
+      <button class="arrow" id="catPrev" aria-label="왼쪽">‹</button>
+      <div class="scrollrow" id="catWrap"><div class="cats" id="cats"></div></div>
+      <button class="arrow" id="catNext" aria-label="오른쪽">›</button>
+      <span class="count" id="cnt"></span>
+    </div>
+  </div>
+</header>
+<main id="main"></main>
+<div id="toast"></div>
+<script type="application/json" id="data">{"meta":{"gallery":{"id":"aichatting","type":"mgallery","name":"AI채팅 마이너 갤러리"},"server":false,"builtAt":"2026-08-28T09:57:00.020Z"},"gl":{"types":{"platform":"캐릭터챗 서비스 플랫폼","model":"대화 생성 모델","concept":"커뮤니티 공통 개념","artifact":"공유되는 산출물","role":"롤플레이 등장 주체","action":"행위","meta":"커뮤니티·메타 표현"},"concepts":{"statusboard":{"label":"상태창 계열","desc":"캐릭터챗 매턴의 변화를 기록해 보여주는 UI. 개념은 '상태창'이고 이를 html 등으로 구현한 게 위젯·트래커. 플랫폼마다 부르는 이름이 다르다."},"pc":{"label":"유저 캐릭터","desc":"NPC와 롤플레이를 진행하기 위한 사용자 쪽 캐릭터. {{user}} 로 지칭된다."},"npc":{"label":"제작된 캐릭터","desc":"플랫폼에 올라온, 유저가 상대하는 캐릭터"},"asset":{"label":"캐릭터 이미지","desc":"캐릭터에 붙는 이미지 리소스"},"ooc":{"label":"OOC","desc":"진행 상황과 무관한 상황을 상정해 캐릭터 반응을 유도하는 번외 롤플레이"},"guideline":{"label":"지침","desc":"출력을 조정하기 위해 제작 프롬프트나 유저노트에 넣는 지시문"},"artstyle":{"label":"그림체 고정","desc":"작가태그·프롬프트를 깎아 그림체를 고정하는 작업과 그 결과물"},"extension":{"label":"외부 도구","desc":"플랫폼을 보조하는 확장프로그램·북마클릿·스크립트"}},"terms":{"케덕":{"type":"platform","canon":"Caveduck","gloss":"케이브덕. 캐릭터챗 플랫폼","aliases":["케이브덕","케"],"confirmed":true,"by":"user"},"롶":{"type":"platform","canon":"로판AI","gloss":"캐릭터챗 플랫폼. 상태창을 '트래커'라고 불러요","aliases":[],"confirmed":true,"by":"user"},"팟":{"type":"platform","canon":"티팟","gloss":"캐릭터챗 플랫폼","aliases":["팊","티팟"],"concept":null,"confirmed":true,"by":"user"},"유니챗":{"type":"platform","canon":"유니챗","gloss":"캐릭터챗 플랫폼","aliases":[],"confirmed":false,"by":"mined"},"루모":{"type":"platform","canon":"루모","gloss":"캐릭터챗 플랫폼","aliases":[],"confirmed":true,"by":"user"},"챗픽":{"type":"meta","canon":"챗픽","gloss":"여러 플랫폼을 한꺼번에 뒤져 캐릭터를 찾아주는 검색 서비스","aliases":[],"concept":null,"confirmed":true,"by":"user"},"엘린":{"type":"platform","canon":"엘린","gloss":"캐릭터챗 플랫폼","aliases":["엘"],"confirmed":true,"by":"user"},"앵챗":{"type":"meta","canon":"AI챗","gloss":"AI 캐릭터챗 자체를 가리키는 말. '앵챗러' = 이용자","aliases":["앵"],"confirmed":true,"by":"user"},"젬이오":{"type":"model","canon":"Gemini 2.5 Pro","gloss":"대화 모델. 젬(Gemini) + 이오(2.5)","aliases":["젬2.5"],"confirmed":true,"by":"user"},"삼칠플":{"type":"model","canon":"Gemini 3.7 Flash","gloss":"대화 모델. 삼칠(3.7) + 플(Flash)","aliases":["젬삼칠플","삼칠블"],"confirmed":true,"by":"user"},"소넷":{"type":"model","canon":"Claude Sonnet","gloss":"대화 모델. 뒤에 버전이 붙는다 (소넷3.6, 소넷5)","aliases":[],"confirmed":true,"by":"user"},"오푸스":{"type":"model","canon":"Claude Opus","gloss":"대화 모델. '푸스'로 줄여 쓰고 앞에 버전이 붙는다 (5푸스, 47푸스)","aliases":["푸스","옾"],"confirmed":true,"by":"user"},"상태창":{"type":"concept","concept":"statusboard","canon":"상태창","gloss":"매턴 변화를 기록해 보여주는 판. html 등으로 구현하면 위젯·트래커가 된다","aliases":["삼태창","정보창"],"confirmed":true,"by":"user"},"위젯":{"type":"artifact","concept":"statusboard","canon":"위젯","gloss":"케덕에서의 상태창 구현물. 코드나 링크로 공유된다","aliases":[],"confirmed":true,"by":"user"},"트래커":{"type":"artifact","concept":"statusboard","canon":"트래커","gloss":"롶에서의 상태창 구현물","aliases":[],"confirmed":true,"by":"user"},"페소":{"type":"role","concept":"pc","canon":"페르소나(PC)","gloss":"NPC와 롤플레이를 진행하기 위한 사용자 쪽 캐릭터. {{user}}, PC 로 지칭된다","aliases":["퍼소나","페르소나"],"confirmed":true,"by":"user"},"캐":{"type":"role","concept":"npc","canon":"캐릭터(NPC)","gloss":"플랫폼에 제작되어 올라온 상대 캐릭터","aliases":["캐릭","npc"],"confirmed":true,"by":"user"},"에셋":{"type":"artifact","concept":"asset","canon":"에셋","gloss":"캐릭터에 붙는 이미지. 갯수 제한·검열 얘기가 자주 나온다","aliases":[],"confirmed":true,"by":"user"},"ooc":{"type":"concept","concept":"ooc","canon":"OOC","gloss":"Out Of Character. 진행과 무관한 상황을 상정해 캐릭터 반응을 유도하는 번외 롤플레이","aliases":["ㅇㅇㄷ","아웃오브캐릭터"],"confirmed":true,"by":"user"},"지침":{"type":"concept","concept":"guideline","canon":"지침","gloss":"출력을 조정하는 지시문. 제작 시엔 캐릭터 프롬프트에, 진행 시엔 유저노트에 넣는다","aliases":["출력지침","제작지침"],"confirmed":true,"by":"user"},"문체지침":{"type":"concept","concept":"guideline","canon":"문체 지침","gloss":"원하는 문체를 유도하는 지침","aliases":["문체"],"confirmed":true,"by":"user"},"출력량":{"type":"concept","concept":"guideline","canon":"출력량","gloss":"한 턴에 출력되는 글자수. 이를 고정하는 게 글자수 지침","aliases":["글자수","출력 분량"],"confirmed":true,"by":"user"},"유저노트":{"type":"concept","concept":"guideline","canon":"유저노트","gloss":"롤플레이 진행 중 지침을 기입하는 칸","aliases":[],"confirmed":true,"by":"user"},"그깎":{"type":"action","concept":"artstyle","canon":"그림체 깎기","gloss":"원하는 그림체가 나오도록 태그·프롬프트를 다듬는 작업","aliases":["그깍"],"confirmed":true,"by":"user"},"작태":{"type":"concept","concept":"artstyle","canon":"작가 태그","gloss":"그림체를 고정하기 위해 넣는 작가 태그","aliases":["작가태그"],"confirmed":true,"by":"user"},"확프":{"type":"artifact","concept":"extension","canon":"확장 프로그램","gloss":"플랫폼을 보조하는 브라우저 확장프로그램","aliases":["확장프로그램","확장 프로그램"],"confirmed":true,"by":"user"},"내캐내먹":{"type":"meta","canon":"내 캐 내가 먹기","gloss":"자기가 제작한 캐릭터를 자기가 플레이하는 것","aliases":["내내먹"],"confirmed":true,"by":"user"},"먹다":{"type":"action","canon":"플레이하다","gloss":"캐릭터와 대화를 진행하다. '먹었다/먹는다/먹을맛' 형태로 쓰인다","aliases":[],"confirmed":true,"by":"user"},"플폼":{"type":"meta","canon":"플랫폼","gloss":"캐릭터챗 서비스 플랫폼의 줄임말","aliases":[],"confirmed":true,"by":"user"},"움":{"type":"platform","canon":"우마이챗","gloss":"캐릭터챗 플랫폼","aliases":["우마이챗","uummai"],"concept":null,"confirmed":true,"by":"user"},"롶푸스":{"type":"model","canon":"로판AI의 Opus","gloss":"로판AI에서 돌리는 Opus 모델","aliases":[],"concept":null,"confirmed":true,"by":"user"},"케푸스":{"type":"model","canon":"케덕의 Opus","gloss":"케덕에서 돌리는 Opus 모델","aliases":[],"concept":null,"confirmed":true,"by":"user"},"그림체":{"type":"concept","concept":"artstyle","canon":"그림체","gloss":"이미지 생성 결과의 화풍","aliases":["화풍"],"confirmed":false,"by":"mined"},"프롬프트":{"type":"concept","concept":null,"canon":"프롬프트","gloss":"모델에 넣는 지시문. 텍스트 지침과 이미지 생성 양쪽에 쓰여서 뜻이 겹쳐요","aliases":["프롬"],"confirmed":false,"by":"mined"}},"patterns":[{"key":"gemini","canon":"Gemini","gloss":"젬 + 숫자 읽기 = Gemini 버전 (젬이오=2.5, 젬삼일=3.1, 젬삼칠플=3.7 Flash)"},{"key":"opus","canon":"Claude Opus","gloss":"숫자 + 푸스 = Opus 버전 (5푸스=Opus 5, 47푸스=Opus 4.7)"},{"key":"sonnet","canon":"Claude Sonnet","gloss":"소넷 + 버전"},{"key":"nai","canon":"NovelAI","gloss":"이미지 생성 모델 버전 표기"},{"key":"platmodel","canon":"플랫폼 + 모델 합성어","gloss":"플랫폼 약칭 뒤에 모델 약칭을 붙여 부르는 말이에요. 롶푸스는 로판AI의 Opus, 케푸스는 케덕의 Opus"}],"stopwords":1,"candidates":[{"w":"핑크","n":6,"g":null,"gf":null,"ex":["[위젯] 아이폰 컨트롤 센터 ui 스타일 (다크/라이트/핑크/민트/블루)","[위젯] 레트로 애니콜 폰 st (기본/핑크/하늘)"],"ctx":["위젯","캐","출력량","케덕"]},{"w":"jsx","n":5,"g":"concept","gf":"유저노트","ex":["[티팟] 유저 공유 기능 설명글 (JSX, 유저노트)","엘린 jsx나 html 없음??"],"ctx":["팟","유저노트","앵챗","에셋"]},{"w":"제작","n":14,"g":null,"gf":null,"ex":["캐 안팔려서 제작 안해! 한지 3일차","(제작 팁)정해진 엔딩/루트는 게임처럼 설계하라."],"ctx":["케덕","페소","캐","ooc"]},{"w":"html","n":14,"g":null,"gf":null,"ex":["케덕 html 적용 폰트","위젯이나 html 제작할 때마다 본가클이랑 ㄹㅇ 머리채잡고 개싸웠는데"],"ctx":["케덕","앵챗","에셋","작태"]},{"w":"유니","n":4,"g":"platform","gf":"엘린","ex":["[유니/움/엘] 야!! 나 너를 조조조.. 조만간 가만 안 둘 거야!!","[유니/엘린] 검 대신 활을 든 공작가 장남, 황제의 사냥개"],"ctx":["엘린"]},{"w":"나만","n":12,"g":null,"gf":null,"ex":["야스각뜨면 나만 튐?","젬3.7 자꾸 검열걸리는데 나만 그런가"],"ctx":["@gemini","젬이오","오푸스","@opus"]},{"w":"프롬프트","n":7,"g":null,"gf":null,"ex":["1인 프롬프트 10개 공유","[프롬프트][확프]장기기억 갈아주는 서사정리 프롬프트+앵챗추출기 업뎃"],"ctx":["케덕","확프","캐","앵챗"]},{"w":"리루","n":6,"g":"role","gf":"플랫폼/이름 형식","ex":["삼칠플 주관적 짧평가(케덕/엘린/리루)","[리루/우마이] 유저가 안식처인 뱀파이어 로드님"],"ctx":["케덕","엘린","삼칠플"]},{"w":"uummai","n":4,"g":null,"gf":null,"ex":["[움/UUMMAI] 움크크 1기 라인업 공개 안내","[움/UUMMAI] 움크크 선발 완료 기념 할인 이벤트!"],"ctx":[]},{"w":"프롬","n":6,"g":null,"gf":null,"ex":["집통소 유리 제물 신도 등등 틀어막는 뚱쭝한 프롬","[프롬] NAI V5 그림체 5개"],"ctx":["에셋","캐","@nai","앵챗"]},{"w":"상태","n":8,"g":null,"gf":null,"ex":["케젬이오 상태 좋다 밤새 달림","케젬 상태 왜이래?"],"ctx":["캐","ooc","케덕","위젯"]},{"w":"캐가","n":8,"g":null,"gf":null,"ex":["내 캐가 갤에 리뷰 올라올 때까지","호들갑 안 떠는 캐가 취향인데"],"ctx":["앵챗","먹다","케덕","페소"]},{"w":"원래","n":7,"g":null,"gf":null,"ex":["남친은 원래 공짜야","케덕 원래 이렇게 느림?"],"ctx":["케덕","앵챗","ooc","확프"]},{"w":"nai","n":7,"g":null,"gf":null,"ex":["[OOC] nai 5로 만화 만들기","[프롬] NAI V5 그림체 5개"],"ctx":["@nai","작태","ooc","에셋"]},{"w":"모델","n":7,"g":null,"gf":null,"ex":["추천 모델 젬이오 캐는 어쩌라고...","반복 묘사는 그냥 초반부터 모델 자주 바꿔주는 수밖에 없을까?"],"ctx":["소넷","젬이오","@gemini","오푸스"]},{"w":"제작자","n":7,"g":null,"gf":null,"ex":["롶 트래커 제작자 설정 상관없이 쓸 수 있네..?","초보 제작자 미세먼지팁!"],"ctx":["페소","캐","ooc","내캐내먹"]},{"w":"출력","n":7,"g":null,"gf":null,"ex":["케도 위젯쓰면 출력 덜줬던 것 같은데","위젯 계속 pc 기준으로 출력 나오는거 해결방법 있나?"],"ctx":["캐","위젯","유저노트","케덕"]},{"w":"티키타","n":4,"g":null,"gf":null,"ex":["[티키타] 신의 계승","[티키타 이벤트] 흉근능력시험 만들었는데 한 번 해보실 분!😚"],"ctx":[]},{"w":"케젬","n":7,"g":null,"gf":null,"ex":["케젬 상태 왜이래?","케젬 진짜 맛갔네;;"],"ctx":["플폼"]},{"w":"나이","n":6,"g":null,"gf":null,"ex":["아 페소에다가 나이 적는거 깜빡했다ㅋㅋㅋ위젯","와 나이 그깎이 진짜 지옥이구나"],"ctx":["위젯","페소","캐","ooc"]},{"w":"대화방","n":3,"g":null,"gf":null,"ex":["티팟|우마이|네코) 대화방 입력란 터치 시 줌인되는 문제 질문","[위젯] 레트로 위젯 (대화방/플레이어) 공유 [기본/핑크]"],"ctx":["케덕","위젯","캐","출력량"]},{"w":"삼칠","n":6,"g":null,"gf":null,"ex":["케 지금 검열 빡세나 삼칠 연속으로 걸리네","삼칠 줄바꿈 /n 이거 몰랐는데"],"ctx":["지침","페소","캐","유저노트"]},{"w":"남캐","n":6,"g":null,"gf":null,"ex":["케 분홍머리 남캐 추천좀 부탁해도 될까","짤) 이런 남캐 ㅊㅊ해줘"],"ctx":[]},{"w":"하이틴","n":3,"g":null,"gf":null,"ex":["[티팟] 대학 하이틴 AU & 개강 전 편지 받기 주간 이벤트 안내","쯔꾸르 위젯 공유 (기본/갸루/하이틴/공포)"],"ctx":["팟","위젯"]},{"w":"설정","n":5,"g":null,"gf":null,"ex":["[유노설정] 내가 쓰려고 올리는 센가물 설정","다시는 강아지 키우는 설정 안할거임"],"ctx":["페소","캐","지침","ooc"]},{"w":"다크","n":2,"g":null,"gf":null,"ex":["[위젯] 아이폰 컨트롤 센터 ui 스타일 (다크/라이트/핑크/민트/블루)"],"ctx":["케덕","위젯","캐","출력량"]},{"w":"대체","n":5,"g":null,"gf":null,"ex":["삼칠이는 대체 뭐가 문젤까","젬은 대체 뭐가문제임"],"ctx":["ooc","플폼","케덕","소넷"]},{"w":"민트","n":2,"g":null,"gf":null,"ex":["[위젯] 아이폰 컨트롤 센터 ui 스타일 (다크/라이트/핑크/민트/블루)"],"ctx":["케덕","캐","위젯","출력량"]},{"w":"유저","n":5,"g":null,"gf":null,"ex":["[케덕/엔조] 아무리 봐도 엔조가 유저 낳았다","[티팟] 유저 공유 기능 설명글 (JSX, 유저노트)"],"ctx":["케덕","페소","캐","팟"]},{"w":"라이트","n":2,"g":null,"gf":null,"ex":["[위젯] 아이폰 컨트롤 센터 ui 스타일 (다크/라이트/핑크/민트/블루)"],"ctx":["케덕","위젯","캐","출력량"]},{"w":"블루","n":2,"g":null,"gf":null,"ex":["[위젯] 아이폰 컨트롤 센터 ui 스타일 (다크/라이트/핑크/민트/블루)"],"ctx":["케덕","위젯","캐","출력량"]},{"w":"하늘","n":2,"g":null,"gf":null,"ex":["[위젯] 레트로 애니콜 폰 st (기본/핑크/하늘)"],"ctx":["케덕","위젯","캐","출력량"]},{"w":"그림체","n":5,"g":null,"gf":null,"ex":["[프롬] NAI V5 그림체 5개","소심한 PixAI 그림체 조합 공유"],"ctx":["앵챗","에셋","@nai","작태"]},{"w":"플레이어","n":2,"g":null,"gf":null,"ex":["[위젯] 레트로 위젯 (대화방/플레이어) 공유 [기본/핑크]"],"ctx":["케덕","위젯","캐","출력량"]},{"w":"우마이","n":3,"g":null,"gf":null,"ex":["티팟|우마이|네코) 대화방 입력란 터치 시 줌인되는 문제 질문","[리루/우마이] 유저가 안식처인 뱀파이어 로드님"],"ctx":["케덕","팟","앵챗","캐"]},{"w":"필독","n":2,"g":null,"gf":null,"ex":["[필독] AI 채팅 갤러리 뉴비 가이드"],"ctx":[]},{"w":"제작할때","n":5,"g":null,"gf":null,"ex":["종량제랑 정량제 제작할때 많이 다름?","위젯 제작할때 카오모지 지시사항 뭐라고 적음?"],"ctx":["위젯","지침","문체지침","플폼"]},{"w":"케에","n":5,"g":null,"gf":null,"ex":["케에 고블린 그거 너무 궁금해서 진입해봤는데","드디어 정실이 케에 이식됐다"],"ctx":[]},{"w":"드디어","n":5,"g":null,"gf":null,"ex":["드디어 정실이 케에 이식됐다","겨우..위젯을 드디어 만들었다.."],"ctx":["위젯","젬이오","@gemini","지침"]},{"w":"유노설정","n":2,"g":null,"gf":null,"ex":["[유노설정] 내가 쓰려고 올리는 센가물 설정"],"ctx":[]},{"w":"초미세먼지팁","n":2,"g":null,"gf":null,"ex":["[초미세먼지팁] 삼칠플 고질적 표현 잡기(사내,여인/193cm의 거구)"],"ctx":["삼칠플"]},{"w":"사내","n":2,"g":null,"gf":null,"ex":["[초미세먼지팁] 삼칠플 고질적 표현 잡기(사내,여인/193cm의 거구)"],"ctx":["삼칠플"]},{"w":"여인","n":2,"g":null,"gf":null,"ex":["[초미세먼지팁] 삼칠플 고질적 표현 잡기(사내,여인/193cm의 거구)"],"ctx":["삼칠플"]},{"w":"occ","n":2,"g":null,"gf":null,"ex":["[OCC]좋아함과 사랑함의 차이 occ"],"ctx":[]},{"w":"혈육페소지침","n":2,"g":null,"gf":null,"ex":["ㄱㅊ??) 혹시 나 같은 취향있는 사람 있을까? (혈육페소지침)"],"ctx":["페소","캐","지침"]},{"w":"좀아포","n":2,"g":null,"gf":null,"ex":["[케/HL/GL] [좀아포] 당신을 외면할 수 없었던 그녀"],"ctx":[]},{"w":"목적지","n":2,"g":null,"gf":null,"ex":["[롶/케/유] [좌표 재설정 중.][목적지, {{user}}.]"],"ctx":[]},{"w":"순애위주","n":2,"g":null,"gf":null,"ex":["롶 여태까지 한캐중 재밌었던 캐들추천(순애위주)"],"ctx":[]},{"w":"녹스","n":2,"g":null,"gf":null,"ex":["ㄱㅋㅅ주의) [케덕 리뷰/녹스] 이세계 나방 수인과 알까기 어떤데"],"ctx":["케덕"]},{"w":"카타르시스","n":2,"g":null,"gf":null,"ex":["케덕 리뷰 [카타르시스] 너네 5푸스로 동물 키워봤어? 동물 묘사 존귀임"],"ctx":["케덕","오푸스","@opus"]},{"w":"테오","n":2,"g":null,"gf":null,"ex":["글씨체 ooc 뒷북 (테오)"],"ctx":["ooc"]},{"w":"mellowz","n":2,"g":null,"gf":null,"ex":["[멜/Mellowz] 크리에이터 이벤트 안내"],"ctx":[]},{"w":"에피","n":2,"g":null,"gf":null,"ex":["[에피] 신규 플폼 찍먹하고 가주세요!! (무제한 무료 가능)"],"ctx":["플폼"]},{"w":"갸루","n":2,"g":null,"gf":null,"ex":["쯔꾸르 위젯 공유 (기본/갸루/하이틴/공포)"],"ctx":["위젯"]},{"w":"공포","n":2,"g":null,"gf":null,"ex":["쯔꾸르 위젯 공유 (기본/갸루/하이틴/공포)"],"ctx":["위젯"]},{"w":"꾸욱","n":2,"g":null,"gf":null,"ex":["[꾸욱] 제3회 해시태그 공모전 홍보"],"ctx":[]},{"w":"프론티아","n":2,"g":null,"gf":null,"ex":["[프론티아] 프론티아 살아있습니다(글로벌 출시 & 제작 콘테스트 소식)"],"ctx":[]},{"w":"갤기장","n":2,"g":null,"gf":null,"ex":["(갤기장) 난 내가 제작은 절대 안 할 줄 알았는데"],"ctx":[]},{"w":"쓰는","n":4,"g":null,"gf":null,"ex":["[케] 간사이벤 쓰는 성가신 남자 좋아하시나요?","[케/HL/GL] 내 정도면 사투리 별로 안 쓰는 편 아니가?"],"ctx":["지침","케덕","ooc","캐"]},{"w":"캐릭터","n":7,"g":null,"gf":null,"ex":["AI 소설·캐릭터 채팅 플랫폼 「주인공」에서 크리에이터를 모집합니다","롶 캐릭터 찾는데 아시는 분"],"ctx":["캐","케덕","위젯","출력량"]},{"w":"있는데","n":4,"g":null,"gf":null,"ex":["케덕용 편의성확장프로그램 만들고 있는데 의견 좀 구할게","옛날부터 엄청 퍼먹은 정실이 있는데"],"ctx":["ooc","케덕","에셋","작태"]},{"w":"레트로","n":4,"g":null,"gf":null,"ex":["[위젯] 레트로 애니콜 폰 st (기본/핑크/하늘)","[위젯] 레트로 라디오 위젯 공유"],"ctx":["위젯","캐","출력량","케덕"]},{"w":"가이드","n":4,"g":null,"gf":null,"ex":["[필독] AI 채팅 갤러리 뉴비 가이드","탭 이용 가이드 최종"],"ctx":["페소","캐","ooc","내캐내먹"]},{"w":"이게","n":4,"g":null,"gf":null,"ex":["이게 맞나","마조 ㅇㅇㄷ 거부당했는데 이게 더 좋다 뭐임"],"ctx":["케덕","ooc","확프"]},{"w":"아는","n":4,"g":null,"gf":null,"ex":["도마 위에 무 놓고 칼로 써는 소리 아는 사람","도입부부터 야호 가능한 캐 아는 애 있니"],"ctx":["캐","ooc","케덕","위젯"]},{"w":"명령어","n":4,"g":null,"gf":null,"ex":["!명령어 이렇게 써도 됨?","케 제작 질문 명령어 쓸 때"],"ctx":["ooc","케덕","확프","젬이오"]},{"w":"롶은","n":4,"g":null,"gf":null,"ex":["롶은 잠긴 이미지 돈으로 못열음?","롶은 리롤 지침 못 넣어?"],"ctx":["지침"]},{"w":"추천좀","n":4,"g":null,"gf":null,"ex":["케덕 나데 받기 좋은 캐 추천좀.","케 분홍머리 남캐 추천좀 부탁해도 될까"],"ctx":["케덕","ooc","문체지침"]},{"w":"싶은","n":3,"g":null,"gf":null,"ex":["은교짓하고 싶은 기분이다","아 먹어보고 싶은 캐들 다 페소 새로 짜야 돼서"],"ctx":["캐","ooc","지침","케덕"]},{"w":"이미지","n":3,"g":null,"gf":null,"ex":["롶은 잠긴 이미지 돈으로 못열음?","위젯에 이미지 못넣나..?"],"ctx":["캐","ooc","위젯","유저노트"]},{"w":"이용","n":3,"g":null,"gf":null,"ex":["갤러리 규정 및 이용 관련 안내","탭 이용 가이드 최종"],"ctx":["ooc","케덕","확프","페소"]},{"w":"아니라","n":3,"g":null,"gf":null,"ex":["[케/팊/엘] 내가 귀찮게 구는 게 아니라, 네가 쓸데없이 편한 거야.","[케/롶] 돈미새 사장님과 연애...가 아니라 일을 합시다!"],"ctx":["페소","캐","ooc","케덕"]},{"w":"위한","n":3,"g":null,"gf":null,"ex":["[OOC] 미련많은 앵챗러를 위한 열린 결말 엔딩 OOC","[루모|얀] 한 남자만을 위한 둥지가 되는 방법"],"ctx":["ooc","페소","캐","앵챗"]},{"w":"nsfw","n":4,"g":null,"gf":null,"ex":["NSFW지침 잘못넣었더니","케 왜 nsfw 지침 로어북만 호출이 안 될까"],"ctx":["캐","지침","에셋","케덕"]},{"w":"한데","n":3,"g":null,"gf":null,"ex":["외국 캐가 대사맛이 더 좋긴 한데","캐시 관련인 거 같긴 한데 이런 경험 있는 사람"],"ctx":["케덕","ooc","젬이오","삼칠플"]},{"w":"이상한","n":3,"g":null,"gf":null,"ex":["별 이상한 꿈을 다 꾸네ㅋㅋㅋ","ㄱㄱㅈ) 요즘 이상한 병 걸림"],"ctx":["케덕","ooc","확프","앵챗"]},{"w":"했는데","n":3,"g":null,"gf":null,"ex":["멜팅 오랜만에 했는데 재밌긴하다","이상형 마조ㅇㅇㄷ했는데"],"ctx":["캐","ooc","페소","케덕"]},{"w":"나옴","n":3,"g":null,"gf":null,"ex":["롶 상태창 쓰는데 매번 1턴째 이렇게 나옴...","그깎하다가 귀여운거 나옴"],"ctx":["캐","케덕","위젯","에셋"]},{"w":"토큰","n":3,"g":null,"gf":null,"ex":["케덕 어차피 토큰 보면서 길이 조절하니까 글자수 늘려주면 좋겠다","케덕 제작 때 토큰 꽉 채워도 됨?"],"ctx":["케덕","삼칠플","플폼","페소"]},{"w":"갑자기","n":3,"g":null,"gf":null,"ex":["[케] 갑자기 인간이 되었습니다. 내가요.","케덕 전체서사요약 갑자기 이게 뭔소리지"],"ctx":["캐","지침","페소","소넷"]},{"w":"표현","n":3,"g":null,"gf":null,"ex":["젬이오 표현 너무 웃김ㅋㅋㅋㅋ","[초미세먼지팁] 삼칠플 고질적 표현 잡기(사내,여인/193cm의 거구)"],"ctx":["캐","ooc","젬이오","@gemini"]},{"w":"케에서","n":4,"g":null,"gf":null,"ex":["케에서 다인플하는데 사칭 좀","케에서 잼삼칠쓰는데 나만 롶맛나냐?"],"ctx":["오푸스","캐","ooc","@opus"]},{"w":"보기","n":3,"g":null,"gf":null,"ex":["[Ooc] npc의 방을 시각적으로 보기","[OOC] 캐릭터의 사랑을 그림으로 보기"],"ctx":["캐","ooc","유저노트","케덕"]},{"w":"만들기","n":3,"g":null,"gf":null,"ex":["[OOC] nai 5로 만화 만들기","html 만들기 vs 그깎하기"],"ctx":["ooc","@nai","페소","캐"]},{"w":"뽕빨","n":3,"g":null,"gf":null,"ex":["케덕 뽕빨 추천해주라","뽕빨에서 순애 먹고 순애에서 뽕빨 먹기"],"ctx":["케덕","캐","에셋","지침"]},{"w":"될까","n":3,"g":null,"gf":null,"ex":["케 분홍머리 남캐 추천좀 부탁해도 될까","케 왜 nsfw 지침 로어북만 호출이 안 될까"],"ctx":["지침","케덕"]},{"w":"할인","n":3,"g":null,"gf":null,"ex":["젬삼칠 할인 올해까지 아니었어?","젬 삼육플, 삼칠플 할인 반영 안 한 노양심 플폼 박제"],"ctx":["@gemini","케덕","삼칠플","플폼"]},{"w":"때마다","n":3,"g":null,"gf":null,"ex":["푸스가 찐빠낼 때마다","위젯이나 html 제작할 때마다 본가클이랑 ㄹㅇ 머리채잡고 개싸웠는데"],"ctx":["오푸스","@opus","케덕","지침"]},{"w":"돌렸는데","n":3,"g":null,"gf":null,"ex":["하고싶었던npcㅇㅇㄷ 5푸스로 돌렸는데 지문이 너무 고능함","캐 야스 취향ooc돌렸는데"],"ctx":["ooc","오푸스","캐","@opus"]},{"w":"있을까","n":3,"g":null,"gf":null,"ex":["ㄱㅊ??) 혹시 나 같은 취향있는 사람 있을까? (혈육페소지침)","ㄹㅁ 지침 어디서 찾을수 있을까?"],"ctx":["지침","앵챗","에셋","작태"]},{"w":"좋겠음","n":3,"g":null,"gf":null,"ex":["당분간 공지를 계속 끌올을 하든가 탭 순서를 좀 바꿔줬음 좋겠음","ㄱㄱㅈ)솔직히 이게 대형캐를 소외하는 그림으로만 안가면 좋겠음"],"ctx":["플폼"]},{"w":"공모전","n":3,"g":null,"gf":null,"ex":["케덕 이번 공모전 당선?됐어","[리루] 1차 공모전 수상작 / 공지사항 안내"],"ctx":["소넷","오푸스","위젯","캐"]},{"w":"순애","n":3,"g":null,"gf":null,"ex":["[케덕/이헌] 모든 것을 가진 남자의 순애","케에 순애 로판캐 있을까?!"],"ctx":["케덕"]},{"w":"대화","n":3,"g":null,"gf":null,"ex":["[확장 프로그램] 업뎃) 전플랫폼 범용 대화 내역 추출 크롬 확프","대화 이미지로 저장하기"],"ctx":["캐","유저노트","케덕","ooc"]},{"w":"인간이","n":3,"g":null,"gf":null,"ex":["[케] 갑자기 인간이 되었습니다. 내가요.","[케] 한국 설화: 인간이 취향인 도태 지네 요괴"],"ctx":["페소"]},{"w":"그깎이","n":3,"g":null,"gf":null,"ex":["새삼 Nai5 그깎이 맘에 들어서 자랑하러 옴","그깎이 세상에서 제일 힘들다"],"ctx":["그깎","@nai"]},{"w":"별로","n":3,"g":null,"gf":null,"ex":["[케/HL/GL] 내 정도면 사투리 별로 안 쓰는 편 아니가?","그깎평가 부탁인데 옵션이 별로 없음"],"ctx":["그깎"]},{"w":"있니","n":3,"g":null,"gf":null,"ex":["내캐내먹러들아 바텀 지침 잘 쓰는 거 있니","도입부부터 야호 가능한 캐 아는 애 있니"],"ctx":["지침","내캐내먹","문체지침"]},{"w":"종량제","n":3,"g":null,"gf":null,"ex":["종량제 오푸스는 보법이 다르구나","종량제 젬삼일 야호호는 진짜 레전드다(ㄴㅋㄴㅁ)"],"ctx":["오푸스","@opus","@gemini","문체지침"]},{"w":"도파민","n":3,"g":null,"gf":null,"ex":["[케] 도파민 남자의 반대말은?","젬이 진짜 도파민 MAX긴 하다"],"ctx":[]},{"w":"모델로","n":3,"g":null,"gf":null,"ex":["아니 대체 무슨 모델로 먹으라는거야","대체 무슨 모델로 먹으란거냐"],"ctx":["ooc"]},{"w":"삼칠이","n":4,"g":null,"gf":null,"ex":["케 삼칠이 나만 자꾸 사극체 됨?","근데 삼칠이 그냥 다 떠나서"],"ctx":[]},{"w":"케도","n":3,"g":null,"gf":null,"ex":["케도 잘되는 시간이 있으려나","케도 위젯쓰면 출력 덜줬던 것 같은데"],"ctx":["위젯","문체지침"]},{"w":"마조","n":3,"g":null,"gf":null,"ex":["마조 ㅇㅇㄷ 거부당했는데 이게 더 좋다 뭐임","이상형 마조ㅇㅇㄷ했는데"],"ctx":["ooc"]},{"w":"왜이렇게","n":3,"g":null,"gf":null,"ex":["엥남들은 왜이렇게 user한테 하얀거짓말을 못할까","삼칠플 ㅇㅇㄷ 왜이렇게 안 먹히지"],"ctx":["삼칠플","ooc"]},{"w":"기억력","n":3,"g":null,"gf":null,"ex":["플툰 기억력 많이 안좋아?","플툰은 ㄹㅇ 기억력 개선해야함"],"ctx":[]},{"w":"적으면","n":3,"g":null,"gf":null,"ex":["이제 AI 한테 선넘는 댓글 적으면 신고당함","롶 ㅅㅂ 출력량 적으면 상태창은 씹지 말아야지"],"ctx":["출력량","상태창"]},{"w":"했더니","n":3,"g":null,"gf":null,"ex":["남윶텀인데 뒤로하는건 나랑 처음이냐 했더니 ..","앵아이들도 휴가보내줄려고 장보게 했더니 소지품"],"ctx":["케덕","출력량"]},{"w":"롶젬","n":3,"g":null,"gf":null,"ex":["롶젬 쓰리콤보!","롶젬 눅눅한가봐 상태창 양식을 빼오네"],"ctx":["상태창"]},{"w":"시뮬","n":3,"g":null,"gf":null,"ex":["제작용 모브능동+시뮬 사건 빈도 지침","[케] AU 천 턴 먹은 사람이 만든 좀비 아포칼립스 시뮬"],"ctx":["케덕","페소","캐","지침"]},{"w":"말아주는","n":3,"g":null,"gf":null,"ex":["오푸스가 말아주는 고양이 페소 개웃김","[케/천무상] 젬삼칠이 무협물 기깔나게 말아주는 거 앎?"],"ctx":["페소","오푸스","@opus","@gemini"]},{"w":"슬로우번","n":3,"g":null,"gf":null,"ex":["[위젯]케덕 하트투명 위젯,슬로우번 포함버전 미포함버전 2개","슬로우번 지침 왜 안되는지 드디어 깨달았다"],"ctx":["지침","케덕","위젯"]},{"w":"이베르","n":3,"g":null,"gf":null,"ex":["케덕/이베르) 피폐물은 사후편지가 완성이구나...","[케/이베르 발렌하르트] 회귀물 좋아하니? 같이하지않을래"],"ctx":["케덕","위젯"]},{"w":"위젯에","n":3,"g":null,"gf":null,"ex":["위젯에 이미지 못넣나..?","이 맛에 위젯에 카오모지랑 상호관계명 넣음"],"ctx":["위젯"]},{"w":"별거","n":3,"g":null,"gf":null,"ex":["별거 없는 픽스 긂체 4개 공유","별거 없는 픽스 로라 조합 찾는 팁 + 긂체 공유"],"ctx":[]},{"w":"픽스","n":3,"g":null,"gf":null,"ex":["별거 없는 픽스 긂체 4개 공유","별거 없는 픽스 로라 조합 찾는 팁 + 긂체 공유"],"ctx":[]},{"w":"긂체","n":3,"g":null,"gf":null,"ex":["별거 없는 픽스 긂체 4개 공유","별거 없는 픽스 로라 조합 찾는 팁 + 긂체 공유"],"ctx":[]},{"w":"플","n":2,"g":"role","gf":"플랫폼/이름 형식","ex":[],"ctx":[]},{"w":"hl","n":2,"g":"role","gf":"플랫폼/이름 형식","ex":[],"ctx":[]},{"w":"gl","n":2,"g":"role","gf":"플랫폼/이름 형식","ex":[],"ctx":[]},{"w":"유","n":2,"g":"role","gf":"플랫폼/이름 형식","ex":[],"ctx":[]},{"w":"만든","n":2,"g":null,"gf":null,"ex":["[OOC] 짭근?) 대디 마미 계열 캐릭터에 내가 쓰려고 만든 ㅇㅇㄷ","[케] AU 천 턴 먹은 사람이 만든 좀비 아포칼립스 시뮬"],"ctx":["ooc","캐","유저노트","케덕"]},{"w":"user","n":2,"g":null,"gf":null,"ex":["엥남들은 왜이렇게 user한테 하얀거짓말을 못할까","[롶/케/유] [좌표 재설정 중.][목적지, {{user}}.]"],"ctx":["페소","캐","ooc","유저노트"]},{"w":"그대로","n":2,"g":null,"gf":null,"ex":["인풋 그대로 따라말하는거 어캐 고쳐야하냐...","(내캐내먹)아 젬삼칠플 지침 그대로 뱉는거 돌겠음"],"ctx":["케덕","삼칠플","지침","ooc"]},{"w":"함께","n":2,"g":null,"gf":null,"ex":["[케] 여우 수인과 함께 차 한잔 어떠세요?","$$무료로 고급 모델과 함께 제작하는 법$$ 2"],"ctx":["캐","페소","ooc","내캐내먹"]},{"w":"가능","n":2,"g":null,"gf":null,"ex":["GL, 백합 가능 캐 제작자분들께 간곡히 부탁한다..","[에피] 신규 플폼 찍먹하고 가주세요!! (무제한 무료 가능)"],"ctx":["케덕","캐","위젯","ooc"]},{"w":"만들고","n":2,"g":null,"gf":null,"ex":["케덕용 편의성확장프로그램 만들고 있는데 의견 좀 구할게","만들고 싶은 골때리는 코믹피폐로?코?캐 있고 뼈대도 다 잡혀있는데"],"ctx":["케덕","ooc","확프","캐"]},{"w":"자주","n":2,"g":null,"gf":null,"ex":["반복 묘사는 그냥 초반부터 모델 자주 바꿔주는 수밖에 없을까?","<티팟> 8월 페스타 자주 묻는 질문 안내"],"ctx":["케덕","캐","ooc","유저노트"]},{"w":"금지","n":2,"g":null,"gf":null,"ex":["[케]인간 출입 금지 : 호텔 루나틱","케덕 숭배 금지 ooc 나 지침도 있어?"],"ctx":["지침","페소","캐","케덕"]},{"w":"나도","n":2,"g":null,"gf":null,"ex":["아 나도 삼천앵남 다ㄸ먹고다니는 불여시 남미새이고 싶다","나도 알아 앵챗 비싼거"],"ctx":["케덕","ooc","캐","확프"]},{"w":"싶어서","n":2,"g":null,"gf":null,"ex":["내캐 내먹 하고 싶어서 만들면","제작하고 싶어서"],"ctx":["캐","ooc","유저노트","위젯"]},{"w":"기준","n":2,"g":null,"gf":null,"ex":["케덕 기준 로어북이라는 거 상시 발동하게 해두면 실질적으로 메인 프롬프트","본가 클로드 html 제작 시 모델 선택 기준"],"ctx":["케덕","ooc","플폼","소넷"]},{"w":"sns","n":2,"g":null,"gf":null,"ex":["애초에 ai그깎으로 sns왜함","위프 괴담 (프롬까서 비교, 제작자 SNS검열)"],"ctx":["캐","케덕","페소","ooc"]},{"w":"해도","n":2,"g":null,"gf":null,"ex":["야스 여러번 해도 처음하는 것처럼 구는거","케덕 초보 제작자 질문 좀 해도 될까?"],"ctx":["케덕","위젯","캐","ooc"]},{"w":"말고","n":2,"g":null,"gf":null,"ex":["롶 말고 다른 데는","지금 케 말고 다른 플폼도 젬상태 구린가?"],"ctx":["캐","페소","ooc","유저노트"]},{"w":"테스트","n":2,"g":null,"gf":null,"ex":["테스트 중인거 배너가 이쁘게 나왔다 ..","[티팟|포피] 내캐내먹 여캐 남페소/여페소 테스트"],"ctx":["페소","케덕","ooc","캐"]},{"w":"카오모지","n":2,"g":null,"gf":null,"ex":["피폐 서사 먹고있는데 카오모지 너무 웃김","위젯 제작할때 카오모지 지시사항 뭐라고 적음?"],"ctx":["위젯","케덕","캐","출력량"]},{"w":"로판","n":4,"g":"role","gf":"플랫폼/이름 형식","ex":["로판 제작자님덜","[롶/로판]이번 생은 어떻게 당신을 사랑해야 할까."],"ctx":["케덕","확프","플폼","ooc"]},{"w":"범용","n":2,"g":null,"gf":null,"ex":["[확장 프로그램] 업뎃) 전플랫폼 범용 대화 내역 추출 크롬 확프","[위젯] (수정함!!!!) 범용 위젯 4종 색상 2개 총 8개 공유함!"],"ctx":["캐","케덕","앵챗","확프"]},{"w":"최종","n":2,"g":null,"gf":null,"ex":["탭 이용 가이드 최종","갤러리 규정 최종"],"ctx":["캐","ooc","오푸스","위젯"]},{"w":"제작할","n":2,"g":null,"gf":null,"ex":["위젯이나 html 제작할 때마다 본가클이랑 ㄹㅇ 머리채잡고 개싸웠는데","제작할 때 롶은 진짜 못 쓰겠다"],"ctx":["위젯","케덕","캐","출력량"]},{"w":"먹고","n":2,"g":null,"gf":null,"ex":["뽕빨에서 순애 먹고 순애에서 뽕빨 먹기","[OOC] 혹시 남캐로 마법소녀물 먹고 싶지 않니?"],"ctx":["캐","앵챗","먹다","케덕"]},{"w":"글씨체","n":2,"g":null,"gf":null,"ex":["글씨체 ooc 뒷북 (테오)","글씨체ooc 질문"],"ctx":["ooc","캐","유저노트","케덕"]},{"w":"보는","n":3,"g":null,"gf":null,"ex":["지침 보는 법","팊은 토큰수가 아니라 글자수로 보는 거야?"],"ctx":["출력량","케덕","위젯","캐"]},{"w":"이번에","n":2,"g":null,"gf":null,"ex":["젬이오만 먹다가 이번에 5푸스 푹먹중인데","이번에 위젯 너무 귀엽게 뽑혀서 자랑하고 싶은데"],"ctx":["케덕","캐","에셋","지침"]},{"w":"본가","n":2,"g":null,"gf":null,"ex":["본가 상태 안 좋아서 지침 수제로 깎으려고 뜯어낸 요령들","본가 클로드 html 제작 시 모델 선택 기준"],"ctx":["캐","ooc","유저노트","케덕"]},{"w":"플랫폼","n":2,"g":null,"gf":null,"ex":["[챗픽] AI챗 플랫폼 작품을 한 번에 찾는 검색 사이트를 만들었습니다.","AI 소설·캐릭터 채팅 플랫폼 「주인공」에서 크리에이터를 모집합니다"],"ctx":["캐","케덕","위젯","출력량"]},{"w":"제한","n":2,"g":null,"gf":null,"ex":["롶 트래커 출력 글자수 제한 있나봄","롶 트래커 제한 먹었는데..."],"ctx":["ooc","프롬프트","페소","캐"]},{"w":"caveduck.pro","n":2,"g":null,"gf":null,"ex":["[확프] Caveduck.Pro v0.4.7 업뎃내역","[확프] Caveduck.Pro 케덕확프 공유 (북마클릿 버전)"],"ctx":["확프","케덕","ooc"]},{"w":"뭐임","n":2,"g":null,"gf":null,"ex":["이거 뭐임","마조 ㅇㅇㄷ 거부당했는데 이게 더 좋다 뭐임"],"ctx":["ooc","플폼","소넷","오푸스"]}]}}</script>
+<script>
+
+var D = JSON.parse(document.getElementById('data').textContent);
+var meta = D.meta, GL = D.gl;
+var esc = function(s){ return String(s==null?'':s).replace(/[&<>"]/g, function(c){
+  return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c] }); };
+var toast = function(msg, bad){ var t=document.getElementById('toast');
+  t.textContent=msg; t.style.borderLeftColor = bad?'var(--warn)':'var(--ok)';
+  t.classList.add('show'); clearTimeout(toast._h); toast._h=setTimeout(function(){t.classList.remove('show')},1900); };
+
+var S = { q:'', view:'cand' };
+
+document.getElementById('sub').textContent =
+  meta.gallery.name + ' · 확정 ' + Object.keys(GL.terms).length + '개 · 후보 ' + GL.candidates.length + '개'
+  + (meta.server ? '' : ' · 정적 모드 (편집할 수 없어요)');
+document.getElementById('stat').textContent = '기각 ' + GL.stopwords + '개';
+
+function wireScroll(wrapId, railId, prevId, nextId){
+  var wrap=document.getElementById(wrapId), rail=document.getElementById(railId);
+  var prev=document.getElementById(prevId), next=document.getElementById(nextId);
+  if(!wrap||!rail) return function(){};
+  function upd(){ var over=rail.scrollWidth-rail.clientWidth, can=over>4;
+    prev.classList.toggle('show',can); next.classList.toggle('show',can);
+    wrap.classList.toggle('l', can && rail.scrollLeft>2);
+    wrap.classList.toggle('r', can && rail.scrollLeft<over-2); }
+  rail.addEventListener('scroll',upd); window.addEventListener('resize',upd);
+  prev.addEventListener('click',function(){ rail.scrollBy({left:-rail.clientWidth*0.7,behavior:'smooth'}) });
+  next.addEventListener('click',function(){ rail.scrollBy({left: rail.clientWidth*0.7,behavior:'smooth'}) });
+  return upd;
+}
+var updCats = wireScroll('catWrap','cats','catPrev','catNext');
+
+var VIEWS = [
+  {key:'cand', label:'미확인 후보'},
+  {key:'terms', label:'확정 용어'},
+  {key:'concepts', label:'개념 묶음'},
+  {key:'patterns', label:'조어 규칙'},
+];
+
+function renderTabs(){
+  var n = {cand:GL.candidates.length, terms:Object.keys(GL.terms).length,
+           concepts:Object.keys(GL.concepts).length, patterns:GL.patterns.length};
+  document.getElementById('cats').innerHTML = VIEWS.map(function(v){
+    return '<span class="cat'+(S.view===v.key?' on':'')+'" data-view="'+v.key+'">'
+      + v.label+'<span class="n">'+n[v.key]+'</span></span>' }).join('');
+  requestAnimationFrame(updCats);
+}
+
+function hit(s){ return !S.q || String(s||'').toLowerCase().indexOf(S.q.toLowerCase())>=0 }
+
+function render(){
+  var h='', shown=0;
+  if (S.view === 'cand') {
+    var list = GL.candidates.filter(function(c){ return hit(c.w)||hit((c.ex||[]).join(' ')) });
+    shown = list.length;
+    h += '<div class="glbox"><p class="d">채굴기가 찾아낸, 아직 뜻을 달지 않은 말이에요. '
+       + '확정하면 분류에 바로 반영되고, 기각하면 다시 후보에 오르지 않아요.</p>';
+    h += list.slice(0,80).map(function(c){
+      var opts = Object.keys(GL.types).map(function(k){
+        return '<option value="'+k+'"'+(c.g===k?' selected':'')+'>'+esc(GL.types[k])+'</option>' }).join('');
+      return '<div class="cand" data-w="'+esc(c.w)+'">'
+        + '<span class="word">'+esc(c.w)+' <span class="g">'+c.n+'</span></span>'
+        + '<span class="meta" title="'+esc((c.ex||[]).join(' / '))+'">'+esc(c.ex[0]||c.ctx.join(', ')||'')
+        + (c.g?' · 추정 '+esc(GL.types[c.g]||c.g):'')+'</span>'
+        + '<span class="act"><select class="ct">'+opts+'</select>'
+        + '<input class="cg" placeholder="뜻"><button class="ok">확정</button><button class="no">기각</button></span></div>';
+    }).join('') || '<div class="empty">후보가 없어요. <b>지금 채굴</b> 을 눌러보세요.</div>';
+    h += '</div>';
+  } else if (S.view === 'terms') {
+    var byType = {};
+    Object.keys(GL.terms).forEach(function(t){ var v=GL.terms[t];
+      if(!hit(t)&&!hit(v.canon)&&!hit(v.gloss)) return;
+      (byType[v.type]=byType[v.type]||[]).push([t,v]); });
+    Object.keys(byType).forEach(function(ty){
+      shown += byType[ty].length;
+      h += '<div class="glbox"><h3>'+esc(GL.types[ty]||ty)+' <span class="g">'+byType[ty].length+'</span></h3><div class="glgrid">'
+        + byType[ty].sort(function(a,b){return a[0].localeCompare(b[0],'ko')}).map(function(kv){
+            var t=kv[0], v=kv[1];
+            // 표제어와 같은 말을 한 번 더 쓰지 않는다
+            var head = (v.canon && v.canon !== t) ? esc(v.canon) : '';
+            var desc = [head, v.gloss ? esc(v.gloss) : ''].filter(Boolean).join('. ');
+            return '<div class="gterm"><b>'+esc(t)+'</b>'+(v.confirmed?'':' <span class="g">확인 대기</span>')
+              +(desc?'<br><span class="g">'+desc+'</span>':'')
+              +((v.aliases&&v.aliases.length)?'<br><span class="g">같은 말 '+esc(v.aliases.join(', '))+'</span>':'')
+              +'</div>' }).join('')
+        + '</div></div>';
+    });
+    if(!shown) h='<div class="empty">찾는 용어가 없어요.</div>';
+  } else if (S.view === 'concepts') {
+    h += '<div class="glbox"><p class="d">플랫폼마다 이름만 다른 같은 개념이에요. '
+       + '분류 규칙은 낱말이 아니라 이 묶음을 참조하므로, 여기에 표면형을 늘리면 분류가 같이 좋아져요.</p><div class="glgrid">';
+    Object.keys(GL.concepts).forEach(function(k){
+      var c=GL.concepts[k];
+      var mem=Object.keys(GL.terms).filter(function(t){ return GL.terms[t].concept===k });
+      if(!hit(c.label)&&!hit(mem.join(' '))) return;
+      shown++;
+      h += '<div class="gterm"><b>'+esc(c.label)+'</b> <span class="g">'+esc(k)+'</span>'
+        + '<br><span class="g">'+esc(c.desc||'')+'</span>'
+        + '<br><span class="g">표면형 · '+esc(mem.join(', ')||'-')+'</span></div>';
+    });
+    h += '</div></div>';
+  } else {
+    h += '<div class="glbox"><p class="d">낱말이 아니라 조어 규칙이에요. 새 버전이 나와도 자동으로 잡혀요.</p><div class="glgrid">';
+    GL.patterns.forEach(function(p){ if(!hit(p.canon)&&!hit(p.gloss)) return; shown++;
+      h += '<div class="gterm"><b>'+esc(p.canon)+'</b><br><span class="g">'+esc(p.gloss)+'</span></div>'; });
+    h += '</div></div>';
+  }
+  document.getElementById('cnt').textContent = shown + '개';
+  document.getElementById('main').innerHTML = h;
+}
+
+function glCall(payload, okMsg){
+  if (!meta.server) { toast('서버 모드에서만 편집할 수 있어요. node dcgall/serve.mjs 로 실행해 주세요.', true); return; }
+  fetch('/api/glossary', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)})
+    .then(function(r){ return r.json() })
+    .then(function(j){ if(j.error) throw new Error(j.error);
+      GL.terms=j.terms; GL.candidates=j.candidates; toast(okMsg); renderTabs(); render(); })
+    .catch(function(e){ toast('사전을 저장하지 못했어요: '+(e.message||''), true) });
+}
+
+document.getElementById('cats').addEventListener('click', function(e){
+  var c=e.target.closest('.cat'); if(!c) return;
+  S.view=c.dataset.view; renderTabs(); render();
+});
+document.getElementById('main').addEventListener('click', function(e){
+  var row=e.target.closest('.cand'); if(!row) return;
+  var w=row.dataset.w;
+  if (e.target.classList.contains('ok'))
+    glCall({promote:{word:w, type:row.querySelector('.ct').value, gloss:row.querySelector('.cg').value}},
+           "'"+w+"' 을 확정했어요. 분류에 바로 반영돼요.");
+  else if (e.target.classList.contains('no'))
+    glCall({reject:w}, "'"+w+"' 을 기각했어요. 다시 후보에 오르지 않아요.");
+});
+document.getElementById('mineBtn').addEventListener('click', function(e){
+  if (!meta.server) { toast('서버 모드에서만 채굴할 수 있어요. node dcgall/serve.mjs 로 실행해 주세요.', true); return; }
+  var b=e.target.closest('button'); b.disabled=true;
+  fetch('/api/mine', {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'})
+    .then(function(r){ return r.json() })
+    .then(function(j){ GL.candidates=j.candidates;
+      toast('채굴을 마쳤어요. 글 '+j.posts+'건에서 새 후보 '+j.added+'개를 찾았어요.');
+      S.view='cand'; renderTabs(); render(); })
+    .catch(function(err){ toast('채굴하지 못했어요: '+err.message, true) })
+    .finally(function(){ b.disabled=false; });
+});
+var deb=function(f,ms){var h;return function(){var a=arguments;clearTimeout(h);h=setTimeout(function(){f.apply(null,a)},ms)}};
+document.getElementById('q').addEventListener('input', deb(function(e){ S.q=e.target.value.trim(); render() },180));
+document.addEventListener('keydown', function(e){
+  if(e.key==='/' && e.target.tagName!=='INPUT'){ e.preventDefault(); document.getElementById('q').focus(); }});
+
+
+/* 좁은 화면에서 검색·필터 영역 접기 — GNB 는 항상 보인다 */
+(function(){
+  var btn = document.getElementById('toolsBtn'), hdr = document.querySelector('.hdr');
+  if (!btn || !hdr) return;
+  btn.addEventListener('click', function(){
+    var open = hdr.classList.toggle('open');
+    btn.title = open ? '검색·필터 접기' : '검색·필터 펼치기';
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
+})();
+
+renderTabs(); render();
+
+</script></body></html>
