@@ -1,21 +1,53 @@
-> `[도구]` **직접 만든 스크립트 문서 · 원문 아님**
+# AIchatCollector
+
+디시인사이드 갤러리를 주기적으로 수집해서, 갤러리 은어를 학습한 분류기로 나눠 보고,
+필요한 글은 원문이 지워져도 남도록 통째로 보존해 두는 개인용 도구입니다.
+
+**의존성 0개.** Node 18 이상만 있으면 됩니다.
+
+```bash
+git clone https://github.com/0sunmin38-ui/AIchatCollector.git
+cd AIchatCollector
+node crawl.mjs --job daily     # 수집
+node serve.mjs                 # 뷰어 (수집 · 서재 · 사전)
+```
+
+기본 대상은 AI채팅 마이너 갤러리지만 `config.json` 의 `gallery.id` 만 바꾸면 다른 갤러리에도 씁니다.
+
+### 화면
+
+| 페이지 | 하는 일 |
+|---|---|
+| **수집** | 모아온 글을 훑고 거르고 분류를 고칩니다. 골라서 서재에 담습니다 |
+| **서재** | 담아둔 글만. 본문·댓글·이미지를 로컬에 보존해서 **원문이 지워져도 남습니다** |
+| **사전** | 갤러리 은어를 채굴·확정합니다. 확정하면 분류와 수집 키워드에 바로 반영됩니다 |
+
+### 수집하는 사람에게
+
+- 요청 간격 1.2초가 기본값입니다. **줄이지 마세요.**
+- 수집한 글은 갤러리 이용자들이 쓴 것입니다. 개인 열람·분석 용도로만 쓰고 재배포하지 마세요.
+- 작성자 고유 id 와 IP 조각은 **처음부터 저장하지 않습니다.**
+- 공유가 필요하면 `node export.mjs --level meta|text|full` 로 식별정보를 뺀 사본을 만드세요.
+
+---
+
 # dcgall — AI채팅 갤러리 정기 수집 툴킷
 
 의존성 없음. Node 18+ 내장 `fetch` 만 사용한다. (`node --version` ≥ 18)
 
 ```
-dcgall/
+AIchatCollector/
 ├─ config.json        수집 대상·주기 잡·속도 정의 (여기만 고치면 됨)
-├─ crawl.mjs          ① 수집기   node dcgall/crawl.mjs --job daily
-├─ classify.mjs       ④ 분류 점검  node dcgall/classify.mjs
-├─ mine.mjs           ⑤ 은어 채굴  node dcgall/mine.mjs
-├─ archive.mjs        ⑥ 북마크·보존 node dcgall/archive.mjs
+├─ crawl.mjs          ① 수집기   node crawl.mjs --job daily
+├─ classify.mjs       ④ 분류 점검  node classify.mjs
+├─ mine.mjs           ⑤ 은어 채굴  node mine.mjs
+├─ archive.mjs        ⑥ 북마크·보존 node archive.mjs
 ├─ taxonomy.json      분류 규칙 (glossary 를 참조한다)
 ├─ glossary.json      은어 사전 — 용어·개념·조어패턴·미확인후보·기각어
 ├─ GLOSSARY.md        사전에서 자동 생성되는 문맥 브리핑 (사람·모델이 읽는 용)
-├─ report.mjs         ③ 리포트   node dcgall/report.mjs --open
-├─ serve.mjs          편집 가능한 뷰어  node dcgall/serve.mjs
-├─ run.sh             크론 진입점  ./dcgall/run.sh daily
+├─ report.mjs         ③ 리포트   node report.mjs --open
+├─ serve.mjs          편집 가능한 뷰어  node serve.mjs
+├─ run.sh             크론 진입점  ./run.sh daily
 ├─ lib/
 │  ├─ http.mjs        요청 계층 (헤더 고정·레이트리밋·재시도·차단 감지)
 │  ├─ parse.mjs       HTML/JSON → 균일 레코드 (PARSER_VERSION 관리)
@@ -53,16 +85,16 @@ dcgall/
 | `watch` | 키워드 검색(`프롬프트`/`지침`/`제타`) 기반 수집 |
 
 ```bash
-node dcgall/crawl.mjs --job daily          # 정해진 잡 실행
-node dcgall/crawl.mjs --job daily --dry    # 저장 없이 미리보기
+node crawl.mjs --job daily          # 정해진 잡 실행
+node crawl.mjs --job daily --dry    # 저장 없이 미리보기
 ```
 
 일회성 조회는 잡 없이 직접:
 
 ```bash
-node dcgall/crawl.mjs --mode recommend --pages 5 --detail --max-detail 20
-node dcgall/crawl.mjs --mode search --keyword 프롬프트 --pages 3 --detail
-node dcgall/crawl.mjs --mode all --pages 10 --min-recommend 20 --detail
+node crawl.mjs --mode recommend --pages 5 --detail --max-detail 20
+node crawl.mjs --mode search --keyword 프롬프트 --pages 3 --detail
+node crawl.mjs --mode all --pages 10 --min-recommend 20 --detail
 ```
 
 주요 플래그: `--detail`/`--no-detail`, `--max-detail N`, `--min-recommend N`,
@@ -94,9 +126,9 @@ node dcgall/crawl.mjs --mode all --pages 10 --min-recommend 20 --detail
 ## 3. 볼 수 있는 HTML
 
 ```bash
-node dcgall/report.mjs --open        # dcgall/out/index.html 생성 후 열기
-node dcgall/report.mjs --days 30 --top 500
-node dcgall/report.mjs --days 0      # 기간 제한 없이 전체
+node report.mjs --open        # out/index.html 생성 후 열기
+node report.mjs --days 30 --top 500
+node report.mjs --days 0      # 기간 제한 없이 전체
 ```
 
 데이터가 파일 안에 들어간 **단일 HTML** 이라 서버 없이 `file://` 로 열린다.
@@ -107,7 +139,7 @@ node dcgall/report.mjs --days 0      # 기간 제한 없이 전체
 분류를 손볼 거면 파일보다 서버 모드가 낫다 (수정이 디스크에 바로 남음):
 
 ```bash
-node dcgall/serve.mjs --days 0        # 전체 기간, http://127.0.0.1:8787
+node serve.mjs --days 0        # 전체 기간, http://127.0.0.1:8787
 ```
 
 ## 4. 분류
@@ -132,11 +164,11 @@ node dcgall/serve.mjs --days 0        # 전체 기간, http://127.0.0.1:8787
 뷰어의 `애매만` 버튼으로 몰아서 검토할 수 있다.
 
 ```bash
-node dcgall/classify.mjs                    # 분포 요약
-node dcgall/classify.mjs --show guide       # 그 분류로 잡힌 제목들 검수
-node dcgall/classify.mjs --show ambiguous   # 애매한 것만 몰아보기
-node dcgall/classify.mjs --explain 373405   # 한 글의 점수 내역과 근거
-node dcgall/classify.mjs --set 373405 guide # CLI 로 수동 지정 ('-' 로 해제)
+node classify.mjs                    # 분포 요약
+node classify.mjs --show guide       # 그 분류로 잡힌 제목들 검수
+node classify.mjs --show ambiguous   # 애매한 것만 몰아보기
+node classify.mjs --explain 373405   # 한 글의 점수 내역과 근거
+node classify.mjs --set 373405 guide # CLI 로 수동 지정 ('-' 로 해제)
 ```
 
 ### 내가 직접 고치기
@@ -144,7 +176,7 @@ node dcgall/classify.mjs --set 373405 guide # CLI 로 수동 지정 ('-' 로 해
 자동 분류는 **제안일 뿐이고 수동 라벨이 언제나 이긴다.** 뷰어의 각 글 왼쪽 드롭다운으로 바꾸면 된다.
 
 ```bash
-node dcgall/serve.mjs        # 수집 페이지 http://127.0.0.1:8787
+node serve.mjs        # 수집 페이지 http://127.0.0.1:8787
                              # 내 서재   http://127.0.0.1:8787/library
 ```
 
@@ -152,7 +184,7 @@ node dcgall/serve.mjs        # 수집 페이지 http://127.0.0.1:8787
 `내보내기` 버튼으로 받은 파일을 병합하면 확정된다.
 
 ```bash
-node dcgall/classify.mjs --import ~/Downloads/labels.json
+node classify.mjs --import ~/Downloads/labels.json
 ```
 
 `labels.json` 은 크롤링·리포트 재생성과 완전히 분리돼 있어서, 몇 번을 다시 긁어도 손으로 고친 분류는 유지된다.
@@ -191,11 +223,11 @@ node dcgall/classify.mjs --import ~/Downloads/labels.json
 5. **본문 편재율** — 본문 곳곳에 고르게 퍼진 말은 일반어이므로 감점
 
 ```bash
-node dcgall/mine.mjs                     # 채굴 + 상위 후보 출력
-node dcgall/mine.mjs --min 3 --n 60      # 최소 등장 글 수 / 출력 개수
-node dcgall/mine.mjs --promote 움 --type platform --gloss "캐릭터챗 플랫폼"
-node dcgall/mine.mjs --reject 핑크        # 영구 제외
-node dcgall/mine.mjs --brief             # GLOSSARY.md 갱신
+node mine.mjs                     # 채굴 + 상위 후보 출력
+node mine.mjs --min 3 --n 60      # 최소 등장 글 수 / 출력 개수
+node mine.mjs --promote 움 --type platform --gloss "캐릭터챗 플랫폼"
+node mine.mjs --reject 핑크        # 영구 제외
+node mine.mjs --brief             # GLOSSARY.md 갱신
 ```
 
 뷰어 `사전` 버튼을 누르면 후보 목록이 나온다. **`지금 채굴` 버튼으로 웹에서 바로 채굴할 수 있고**,
@@ -253,7 +285,7 @@ data/aichatting/archive/373405/
 
 보존은 글당 본문·댓글·이미지 요청이 붙어 **5초쯤** 걸리므로, 일괄 담기는 **북마크만 즉시 등록하고
 보존은 백그라운드 큐**로 돌린다. 상단 바에 진행률이 뜨고 `중단` 으로 멈출 수 있다.
-탭을 닫아도 서버가 계속 처리하고, 중간에 끊겼으면 `node dcgall/archive.mjs --sync` 로 마저 받는다.
+탭을 닫아도 서버가 계속 처리하고, 중간에 끊겼으면 `node archive.mjs --sync` 로 마저 받는다.
 
 서재에서 할 수 있는 것: **분류별 필터**(수집 페이지와 같은 분류 체계), 내가 붙인 **태그별 필터**,
 글마다 **메모**, 본문·댓글·메모 통합 검색, `원문 삭제됨` 만 모아보기.
@@ -265,12 +297,12 @@ data/aichatting/archive/373405/
 **본문·댓글·이미지는 그대로 읽힌다.**
 
 ```bash
-node dcgall/archive.mjs                 # 현황 (북마크·아카이브 용량·삭제된 글 수)
-node dcgall/archive.mjs --add 373405 --note "글자수 지침 참고" --tags 지침,참고   # 서재에 담기
-node dcgall/archive.mjs --sync          # 북마크됐는데 아직 안 떠온 것 전부 보존
-node dcgall/archive.mjs --verify        # 원문 생존 확인
-node dcgall/archive.mjs --rm 373405     # 북마크 해제 (보존 파일은 남는다)
-node dcgall/archive.mjs --prune --yes   # 북마크 없는 아카이브 정리
+node archive.mjs                 # 현황 (북마크·아카이브 용량·삭제된 글 수)
+node archive.mjs --add 373405 --note "글자수 지침 참고" --tags 지침,참고   # 서재에 담기
+node archive.mjs --sync          # 북마크됐는데 아직 안 떠온 것 전부 보존
+node archive.mjs --verify        # 원문 생존 확인
+node archive.mjs --rm 373405     # 북마크 해제 (보존 파일은 남는다)
+node archive.mjs --prune --yes   # 북마크 없는 아카이브 정리
 ```
 
 북마크를 빼도 보존 파일은 일부러 남긴다 — 실수로 뺐을 때 원문이 이미 지워져 있으면 복구가 불가능하기 때문이다.
@@ -278,17 +310,50 @@ node dcgall/archive.mjs --prune --yes   # 북마크 없는 아카이브 정리
 ## 정기 실행
 
 ```bash
-./dcgall/run.sh daily     # 수집 → 채굴 → 브리핑 → 북마크 보존 → 원문 생존확인 → 리포트
+./run.sh daily     # 수집 → 채굴 → 브리핑 → 북마크 보존 → 원문 생존확인 → 리포트
 ```
 
 crontab 예시 — 매일 오전 8시 daily, 일요일 새벽 4시 sweep:
 
 ```cron
-0 8 * * *  ./dcgall/run.sh daily
-0 4 * * 0  cd /Users/minnoh/Documents/gitsource/character && ./dcgall/run.sh sweep
+0 8 * * *  ./run.sh daily
+0 4 * * 0  cd /Users/minnoh/Documents/gitsource/character && ./run.sh sweep
 ```
 
 `PATH` 에 node 가 없을 수 있으니 crontab 상단에 `PATH=/usr/local/bin:/usr/bin:/bin:$HOME/.nvm/versions/node/<버전>/bin` 를 넣어둘 것.
+
+## 데이터를 다른 폴더에 두기 (여러 대에서 같은 내용 보기)
+
+기본은 `data/` 지만, `--data` 로 어디든 가리킬 수 있다.
+iCloud Drive 같은 동기화 폴더에 두면 **맥북 두 대가 같은 수집물과 서재를 본다.**
+
+```bash
+# 처음 한 번만 위치를 알려준다. 그 값이 .datadir 에 기억된다.
+node classify.mjs --data ~/Library/Mobile\ Documents/com~apple~CloudDocs/dcgall
+
+# 이후로는 옵션 없이 그냥 쓴다
+node serve.mjs
+```
+
+우선순위는 `--data` > `DCGALL_DATA` > 기억해둔 위치(`.datadir`) > 코드 옆 `data/`.
+`.datadir` 은 기기마다 경로가 달라서 git 에 올리지 않는다.
+새 맥에서는 클론한 뒤 위 첫 줄만 한 번 실행하면 된다.
+지정한 폴더에 `config.json` · `taxonomy.json` · `glossary.json` 이 없으면 기본값을 깔아준다.
+**코드 옆 기본 위치를 쓸 때는 복사하지 않는다** (같은 파일이 두 곳에 생기면 헷갈리므로).
+
+동기화 폴더에 담기는 것:
+
+```
+<동기화폴더>/
+  config.json  taxonomy.json  glossary.json
+  <갤러리ID>/
+    posts/     수집 로그
+    archive/   서재 보존본 (원문이 지워져도 남는 것)
+    runs/      실행 기록
+    bookmarks.json  labels.json  state.json
+```
+
+두 대에서 **동시에** 쓰지 말 것. 동기화가 끝난 뒤 다른 쪽을 켜야 충돌이 없다.
 
 ## 공개용 내보내기
 
@@ -296,8 +361,8 @@ crontab 예시 — 매일 오전 8시 daily, 일요일 새벽 4시 sweep:
 공유가 필요하면 식별정보를 떼어낸 사본을 만든다. 원본은 건드리지 않는다.
 
 ```bash
-node dcgall/export.mjs --level meta   # 제목·날짜·지표·분류만
-node dcgall/export.mjs --level text   # + 본문·댓글 (식별정보는 제거)
+node export.mjs --level meta   # 제목·날짜·지표·분류만
+node export.mjs --level text   # + 본문·댓글 (식별정보는 제거)
 ```
 
 어느 단계에서도 **닉네임·uid·IP·이미지·원본 HTML 은 나가지 않는다.**

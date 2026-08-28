@@ -6,6 +6,7 @@ import http from 'node:http';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import { setDataDir, confFile } from './lib/paths.mjs';
 import { execFile } from 'node:child_process';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -25,7 +26,8 @@ const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const args = Object.fromEntries(
   [...process.argv.slice(2).join(' ').matchAll(/--([\w-]+)(?:[= ]([^-\s]\S*))?/g)].map((m) => [m[1], m[2] ?? true])
 );
-const cfg = JSON.parse(fs.readFileSync(path.join(ROOT, 'config.json'), 'utf8'));
+setDataDir(ROOT, args.data ? String(args.data) : null);
+const cfg = JSON.parse(fs.readFileSync(confFile(ROOT, 'config.json'), 'utf8'));
 const galleryId = args.gallery || cfg.gallery.id;
 const port = Number(args.port || 8787);
 const host = String(args.host || '127.0.0.1');
@@ -180,7 +182,7 @@ const server = http.createServer(async (req, res) => {
       let body = '';
       for await (const chunk of req) { body += chunk; if (body.length > 1e5) { req.destroy(); return; } }
       const b = JSON.parse(body || '{}');
-      const cfgPath = path.join(ROOT, 'config.json');
+      const cfgPath = confFile(ROOT, 'config.json');
       const live = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));   // 최신 파일을 다시 읽는다
       const seen = new Set();
       const kws = (b.keywords || [])

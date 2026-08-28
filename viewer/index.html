@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>character — 작업 뷰어</title>
+<style>
+:root{
+  --bg:#faf9f7; --panel:#fff; --line:#e5e1db; --ink:#2b2723; --dim:#8a8179;
+  --accent:#7c5cff; --won:#3f8f5f; --jung:#3b7bbf; --jak:#c98a2e; --bad:#c0392b;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#17161a; --panel:#1f1e23; --line:#34323a; --ink:#e8e5e0; --dim:#918a83;
+  --won:#63b183; --jung:#6ba4dd; --jak:#e0aa5a; --bad:#e07b6e;
+}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:14px/1.65 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard",system-ui,sans-serif;}
+button,input,select,textarea{font:inherit;color:inherit}
+#app{display:grid;grid-template-columns:250px 1fr 300px;grid-template-rows:44px 1fr;height:100vh}
+header{grid-column:1/-1;display:flex;align-items:center;gap:4px;padding:0 12px;
+  background:var(--panel);border-bottom:1px solid var(--line)}
+header .brand{font-weight:700;margin-right:12px;letter-spacing:-.3px}
+header .sp{flex:1}
+.tab{padding:5px 13px;border:1px solid transparent;border-radius:7px;background:none;cursor:pointer;color:var(--dim)}
+.tab:hover{background:var(--bg)}
+.tab.on{background:var(--bg);border-color:var(--line);color:var(--ink);font-weight:600}
+#side,#cart{background:var(--panel);overflow:auto}
+#side{border-right:1px solid var(--line)}
+#cart{border-left:1px solid var(--line);display:flex;flex-direction:column}
+main{overflow:auto;padding:22px 30px}
+.muted{color:var(--dim)}
+.grp{padding:9px 12px 3px;font-size:11px;font-weight:700;color:var(--dim);letter-spacing:.6px}
+.f{display:flex;align-items:center;gap:6px;padding:4px 12px;cursor:pointer;font-size:13px;
+  border-left:2px solid transparent}
+.f:hover{background:var(--bg)}
+.f.on{background:var(--bg);border-left-color:var(--accent);font-weight:600}
+.f span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dot{width:6px;height:6px;border-radius:50%;flex:none}
+.dot.원문{background:var(--won)} .dot.정리{background:var(--jung)}
+.dot.작업{background:var(--jak)} .dot.csv{background:var(--dim)}
+.badge{display:inline-block;padding:1px 7px;border-radius:5px;font-size:11px;font-weight:700;
+  border:1px solid currentColor}
+.badge.원문{color:var(--won)} .badge.정리{color:var(--jung)} .badge.작업{color:var(--jak)}
+.bar{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.bar input[type=search],.bar select,.bar input[type=text]{
+  padding:6px 9px;border:1px solid var(--line);border-radius:7px;background:var(--panel)}
+.bar input[type=search]{min-width:210px}
+.btn{padding:6px 12px;border:1px solid var(--line);border-radius:7px;background:var(--panel);cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btn.pri{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{border-bottom:1px solid var(--line);padding:5px 8px;text-align:left;vertical-align:top}
+th{position:sticky;top:0;background:var(--panel);z-index:1;font-size:12px;color:var(--dim)}
+tbody tr:hover{background:var(--panel)}
+code,.tag{font-family:var(--mono);font-size:12.5px}
+.tag{cursor:pointer;padding:1px 5px;border-radius:5px;background:var(--panel);border:1px solid var(--line)}
+.tag:hover{border-color:var(--accent)}
+.nsfw{color:var(--bad);font-weight:700;font-size:11px}
+#cart .head{padding:10px 12px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:6px}
+#cart .list{flex:1;overflow:auto}
+.ci{padding:6px 12px;border-bottom:1px solid var(--line);display:flex;gap:6px;align-items:center}
+.ci select{flex:none;width:88px;padding:2px 4px;border:1px solid var(--line);border-radius:5px;
+  background:var(--bg);font-size:11px}
+.ci .t{flex:1;font-family:var(--mono);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ci .x{cursor:pointer;color:var(--dim);border:none;background:none;padding:0 2px}
+.ci .x:hover{color:var(--bad)}
+pre{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:12px;
+  overflow:auto;font-family:var(--mono);font-size:12.5px;line-height:1.6;white-space:pre-wrap;word-break:break-all}
+textarea{width:100%;min-height:130px;padding:11px;border:1px solid var(--line);border-radius:9px;
+  background:var(--panel);font-family:var(--mono);font-size:12.5px;resize:vertical}
+.md h1{font-size:23px;margin:0 0 4px;letter-spacing:-.4px}
+.md h2{font-size:18px;margin:26px 0 8px;padding-bottom:5px;border-bottom:1px solid var(--line)}
+.md h3{font-size:15px;margin:20px 0 6px}
+.md h4{font-size:14px;margin:16px 0 4px}
+.md blockquote{margin:10px 0;padding:8px 13px;border-left:3px solid var(--line);
+  background:var(--panel);border-radius:0 7px 7px 0;color:var(--dim)}
+.md blockquote strong{color:var(--ink)}
+.md table{margin:10px 0}
+.md ul,.md ol{padding-left:20px;margin:8px 0}
+.md li{margin:2px 0}
+.md hr{border:none;border-top:1px solid var(--line);margin:20px 0}
+.md a{color:var(--accent)}
+.md code{background:var(--panel);border:1px solid var(--line);padding:1px 5px;border-radius:5px}
+.md pre code{background:none;border:none;padding:0}
+.res{margin:8px 0;padding:10px 13px;border:1px solid var(--line);border-radius:9px;background:var(--panel)}
+.res.ok{border-left:3px solid var(--won)} .res.no{border-left:3px solid var(--bad)}
+.slot{display:grid;grid-template-columns:36px 118px 1fr;gap:8px;padding:3px 0;
+  border-bottom:1px solid var(--line);align-items:baseline}
+.slot .n{font-family:var(--mono);color:var(--dim);font-size:12px}
+.slot .v{font-family:var(--mono);font-size:12.5px}
+.slot.empty{opacity:.35}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);
+  color:var(--bg);padding:8px 18px;border-radius:20px;font-size:13px;opacity:0;
+  transition:opacity .2s;pointer-events:none;z-index:99}
+.toast.on{opacity:1}
+@media(max-width:1000px){#app{grid-template-columns:1fr}#side,#cart{display:none}}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="brand">character</div>
+    <button class="tab on" data-t="read">읽기</button>
+    <button class="tab" data-t="tag">태그</button>
+    <button class="tab" data-t="build">조립</button>
+    <button class="tab" data-t="check">검토</button>
+    <div class="sp"></div>
+    <span class="muted" id="stat">불러오는 중…</span>
+  </header>
+  <nav id="side"></nav>
+  <main id="main"></main>
+  <aside id="cart">
+    <div class="head">
+      <strong>담은 태그</strong><span class="muted" id="cn">0</span>
+      <div class="sp" style="flex:1"></div>
+      <button class="btn" id="clear" style="padding:3px 9px;font-size:12px">비우기</button>
+    </div>
+    <div class="list" id="clist"></div>
+  </aside>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ─────────────────────────────────────────────
+   character 작업 뷰어
+   - 저장소 파일을 런타임에 읽는다. 데이터를 박아넣지 않는다.
+   - 디렉터리 목록으로 파일을 자동 발견하므로 파일을 추가해도 코드를 고칠 필요 없다.
+     (python3 -m http.server 의 자동 인덱스를 이용)
+   ───────────────────────────────────────────── */
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const SKIP = /^(\.|dcgall\/|viewer\/|node_modules)/;
+/* 뷰어가 viewer/ 안에 있으므로 저장소 루트를 기준으로 잡는다. */
+const ROOT = location.pathname.replace(/viewer\/[^/]*$/, '');
+
+const SLOTS = ['00 카메라·구도','01 성별','02 캐릭터','03 시선','04 얼굴','05 머리','06 상체','07 하체',
+'08 신체 상태','09 직업·종족','10 캐릭터 상황','11 자세','12 동작','13 감정','14 장르','15 재질','16 구조',
+'17 상의','18 겉옷·팔','19 하의·다리','20 머리·목','21 팔·허리','22 다리·메인','23 신발','24 배경',
+'25 소품','26 분위기'];
+
+const S = { files:[], md:{}, dict:[], style:[], artist:[], links:[],
+            tagset:new Set(), preset_vocab:new Set(), presets:{Q:{},N:{}},
+            cart:[], cur:null, tab:'read' };
+
+/* ── 저장소 훑기 ────────────────────────────── */
+async function listDir(path){
+  const r = await fetch(path);
+  if(!r.ok) throw new Error(path+' '+r.status);
+  const html = await r.text();
+  const out = [];
+  for(const m of html.matchAll(/href="([^"]+)"/g)){
+    let h = decodeURIComponent(m[1]);
+    if(h.startsWith('/')||h.startsWith('?')||h.startsWith('..')||h==='./') continue;
+    out.push(path + h);
+  }
+  return out;
+}
+async function walk(path, depth=0){
+  if(depth > 4) return [];
+  let items;
+  try{ items = await listDir(path); }catch{ return []; }
+  const files = [];
+  for(const it of items){
+    const rel = it.slice(ROOT.length);
+    if(SKIP.test(rel.replace(/^\//,''))) continue;
+    if(it.endsWith('/')) files.push(...await walk(it, depth+1));
+    else if(/\.(md|csv)$/i.test(it)) files.push(rel);
+  }
+  return files;
+}
+
+/* ── CSV ────────────────────────────────────── */
+function parseCSV(text){
+  const rows=[]; let row=[], cell='', q=false;
+  text = text.replace(/^\uFEFF/,'').replace(/\r\n?/g,'\n');
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(q){ if(c==='"'){ if(text[i+1]==='"'){cell+='"';i++;} else q=false; } else cell+=c; }
+    else if(c==='"') q=true;
+    else if(c===','){ row.push(cell); cell=''; }
+    else if(c==='\n'){ row.push(cell); rows.push(row); row=[]; cell=''; }
+    else cell+=c;
+  }
+  if(cell||row.length){ row.push(cell); rows.push(row); }
+  const hdr = rows.shift().map(h=>h.trim());
+  return rows.filter(r=>r.some(c=>c.trim()))
+             .map(r=>Object.fromEntries(hdr.map((h,i)=>[h,(r[i]??'').trim()])));
+}
+
+/* ── 아주 작은 마크다운 렌더러 ─────────────────
+   CDN 의존 없이 저장소 문서(제목·표·코드·목록·인용)를 렌더한다. */
+function inline(s){
+  return esc(s)
+    .replace(/`([^`]+)`/g,'<code>$1</code>')
+    .replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')
+    .replace(/(^|[^*])\*([^*\n]+)\*/g,'$1<em>$2</em>')
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>');
+}
+function renderMD(src){
+  const L = src.split('\n'), out=[]; let i=0;
+  const flushList = (tag, items)=> out.push(`<${tag}>`+items.map(x=>`<li>${inline(x)}</li>`).join('')+`</${tag}>`);
+  while(i<L.length){
+    const l = L[i];
+    if(/^```/.test(l)){
+      const buf=[]; i++;
+      while(i<L.length && !/^```/.test(L[i])) buf.push(L[i++]);
+      i++; out.push('<pre><code>'+esc(buf.join('\n'))+'</code></pre>'); continue;
+    }
+    if(/^\s*\|/.test(l) && /^\s*\|[\s:|-]+\|\s*$/.test(L[i+1]||'')){
+      const cells = r => r.trim().replace(/^\||\|$/g,'').split('|').map(c=>c.trim());
+      const head = cells(l); i+=2; const body=[];
+      while(i<L.length && /^\s*\|/.test(L[i])) body.push(cells(L[i++]));
+      out.push('<table><thead><tr>'+head.map(h=>`<th>${inline(h)}</th>`).join('')+'</tr></thead><tbody>'
+        +body.map(r=>'<tr>'+r.map(c=>`<td>${inline(c)}</td>`).join('')+'</tr>').join('')+'</tbody></table>');
+      continue;
+    }
+    let m;
+    if(m=l.match(/^(#{1,4})\s+(.*)$/)){ out.push(`<h${m[1].length}>${inline(m[2])}</h${m[1].length}>`); i++; continue; }
+    if(/^\s*(---|===)\s*$/.test(l)){ out.push('<hr>'); i++; continue; }
+    if(/^>\s?/.test(l)){
+      const buf=[]; while(i<L.length && /^>\s?/.test(L[i])) buf.push(L[i++].replace(/^>\s?/,''));
+      out.push('<blockquote>'+renderMD(buf.join('\n'))+'</blockquote>'); continue;
+    }
+    if(/^\s*[-*]\s+/.test(l)){
+      const buf=[]; while(i<L.length && /^\s*[-*]\s+/.test(L[i])) buf.push(L[i++].replace(/^\s*[-*]\s+/,''));
+      flushList('ul',buf); continue;
+    }
+    if(/^\s*\d+\.\s+/.test(l)){
+      const buf=[]; while(i<L.length && /^\s*\d+\.\s+/.test(L[i])) buf.push(L[i++].replace(/^\s*\d+\.\s+/,''));
+      flushList('ol',buf); continue;
+    }
+    if(l.trim()===''){ i++; continue; }
+    const buf=[]; while(i<L.length && L[i].trim() && !/^(#{1,4}\s|>|\s*[-*]\s|\s*\d+\.\s|```|\s*\|)/.test(L[i])) buf.push(L[i++]);
+    out.push('<p>'+inline(buf.join(' '))+'</p>');
+  }
+  return out.join('\n');
+}
+const gradeOf = src => (src.split('\n')[0].match(/\[(원문|정리|작업|도구)\]/)||[])[1] || '';
+
+/* ── 로드 ───────────────────────────────────── */
+const norm = t => t.replace(/_/g,' ').trim().toLowerCase();
+async function boot(){
+  try{ S.files = await walk(ROOT); }
+  catch{ $('#main').innerHTML='<p class="res no">파일 목록을 읽지 못했습니다. 저장소 루트에서 <code>python3 -m http.server</code> 로 열어주세요.</p>'; return; }
+  if(!S.files.length){ $('#main').innerHTML='<p class="res no">파일을 찾지 못했습니다. 디렉터리 목록을 제공하는 서버로 열어주세요.</p>'; return; }
+
+  const get = async p => (await fetch(ROOT + p)).text();
+  const find = re => S.files.find(f=>re.test(f));
+
+  await Promise.all(S.files.filter(f=>f.endsWith('.md')).map(async f=>{ S.md[f]=await get(f); }));
+
+  const d=find(/1-태그사전\.csv$/), st=find(/1-스타일태그\.csv$/), ar=find(/1-작가태그\.csv$/);
+  if(d)  S.dict   = parseCSV(await get(d));
+  if(st) S.style  = parseCSV(await get(st));
+  if(ar) S.artist = parseCSV(await get(ar));
+  for(const f of S.files.filter(f=>/참고링크\.csv$/.test(f)))
+    S.links.push(...parseCSV(await get(f)).map(r=>({...r,_src:f.includes('챗봇')?'챗봇':'이미지'})));
+
+  for(const r of S.dict) for(const t of (r['태그']||'').split(',')) if(t.trim()) S.tagset.add(norm(t));
+  for(const r of S.style) if(r['태그']) S.tagset.add(norm(r['태그']));
+  for(const r of S.artist) if(r['태그']) S.tagset.add(norm(r['태그']));
+
+  for(const f of S.files.filter(f=>/스타일프리셋\/.*\.md$/.test(f))){
+    const src=S.md[f]||''; const kind=/부정/.test(f)?'N':'Q';
+    for(const m of src.matchAll(/^## ([QN]\d+)[^\n]*\n(?:[\s\S]*?)```\n([\s\S]*?)```/gm))
+      S.presets[kind][m[1]] = m[2].trim();
+  }
+  /* 프리셋에 쓰인 어휘도 '아는 태그'로 친다.
+     태그사전은 2022년 danbooru 기준이라 8k · dramatic contrast 같은
+     퀄리티·조명 어휘가 아예 없다. 그것까지 미상으로 잡으면 오탐만 쌓인다. */
+  for(const kind of ['Q','N'])
+    for(const body of Object.values(S.presets[kind]))
+      for(const t of body.replace(/-?[\d.]+::/g,'').replace(/::/g,'').split(','))
+        if(t.trim()) S.preset_vocab.add(norm(t));
+
+  $('#stat').textContent = `${S.files.length}개 파일 · 태그 ${S.tagset.size.toLocaleString()}`;
+  loadCart(); drawSide(); show(S.files.find(f=>f==='README.md')||S.files[0]);
+}
+
+/* ── 사이드바 ───────────────────────────────── */
+function drawSide(){
+  const groups={};
+  for(const f of S.files){ const g=f.includes('/')?f.split('/')[0]:'· 루트'; (groups[g] ||= []).push(f); }
+  $('#side').innerHTML = Object.keys(groups).sort().map(g=>
+    `<div class="grp">${esc(g)}</div>`+groups[g].map(f=>{
+      const grade = f.endsWith('.csv') ? 'csv' : (gradeOf(S.md[f]||'')||'작업');
+      const name = f.split('/').slice(1).join('/') || f;
+      return `<div class="f${S.cur===f?' on':''}" data-f="${esc(f)}" title="${esc(f)}">
+        <i class="dot ${grade}"></i><span>${esc(name)}</span></div>`;
+    }).join('')).join('');
+  $('#side').onclick = e => { const el=e.target.closest('.f'); if(el){ setTab('read'); show(el.dataset.f); } };
+}
+
+/* ── 읽기 ───────────────────────────────────── */
+function show(f){
+  S.cur=f; drawSide();
+  if(f.endsWith('.csv')){ setTab('tag'); return; }
+  const src=S.md[f]||''; const g=gradeOf(src);
+  $('#main').innerHTML = `<div class="bar">
+      ${g?`<span class="badge ${g}">${g}</span>`:''}
+      <code class="muted">${esc(f)}</code>
+      <button class="btn" onclick="copy(atob('${btoa(unescape(encodeURIComponent(f)))}'),'경로')">경로 복사</button>
+    </div><div class="md">${renderMD(src.replace(/^> `\[[^\]]+\][\s\S]*?\n/,''))}</div>`;
+  $('#main').scrollTop=0;
+}
+
+/* ── 태그 ───────────────────────────────────── */
+function drawTag(){
+  const sheets=[...new Set(S.dict.map(r=>r['시트']))].filter(Boolean);
+  $('#main').innerHTML = `<div class="bar">
+    <input type="search" id="q" placeholder="한글명 · 태그 검색 (예: 안경, twin)">
+    <select id="src"><option value="dict">태그사전 ${S.dict.length}</option>
+      <option value="style">스타일태그 ${S.style.length}</option>
+      <option value="artist">작가태그 ${S.artist.length}</option>
+      <option value="links">참고링크 ${S.links.length}</option></select>
+    <select id="sheet"><option value="">시트 전체</option>${sheets.map(s=>`<option>${esc(s)}</option>`).join('')}</select>
+    <label class="muted"><input type="checkbox" id="sfw" checked> NSFW 숨김</label>
+    <span class="sp" style="flex:1"></span><span class="muted" id="hit"></span>
+  </div><div id="rows"></div>`;
+  const run=()=>{
+    const q=$('#q').value.trim().toLowerCase(), src=$('#src').value,
+          sh=$('#sheet').value, sfw=$('#sfw').checked;
+    $('#sheet').style.display = src==='dict' ? '' : 'none';
+    $('#rows').innerHTML = ({dict:rowsDict,style:rowsStyle,artist:rowsArtist,links:rowsLinks})[src](q,sh,sfw);
+  };
+  ['#q','#src','#sheet','#sfw'].forEach(s=>{ const e=$(s); e.oninput=e.onchange=run; });
+  run(); $('#q').focus();
+}
+const hit=n=>{ const e=$('#hit'); if(e) e.textContent=n.toLocaleString()+'건'; };
+function tbl(head,body){ return `<table><thead><tr>${head.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table>`; }
+function tagCell(t){ return `<span class="tag" onclick="add('${esc(t).replace(/'/g,"\\'")}')">${esc(t)}</span>`; }
+
+function rowsDict(q,sheet,sfw){
+  let r=S.dict;
+  if(sheet) r=r.filter(x=>x['시트']===sheet);
+  if(sfw) r=r.filter(x=>x['NSFW']!=='TRUE');
+  if(q) r=r.filter(x=>(x['한글명']+' '+x['태그']+' '+x['분류1']+' '+x['분류2']).toLowerCase().includes(q));
+  hit(r.length);
+  return tbl(['시트','분류','한글명','태그','',''], r.slice(0,400).map(x=>`<tr>
+    <td class="muted">${esc(x['시트'])}</td>
+    <td class="muted">${esc(x['분류1'])} ${esc(x['분류2'])}</td>
+    <td>${esc(x['한글명'])}</td>
+    <td>${(x['태그']||'').split(',').map(t=>tagCell(t.trim())).join(' ')}</td>
+    <td>${x['NSFW']==='TRUE'?'<span class="nsfw">NSFW</span>':''}</td>
+    <td class="muted">${esc(x['비고']||'')}</td></tr>`).join(''))
+    + (r.length>400?'<p class="muted">상위 400건만 표시했습니다. 검색을 좁혀주세요.</p>':'');
+}
+function rowsStyle(q){
+  let r=S.style;
+  if(q) r=r.filter(x=>(x['태그']+' '+x['설명']+' '+x['분류']).toLowerCase().includes(q));
+  hit(r.length);
+  return tbl(['분류','태그','설명','비고'], r.map(x=>`<tr>
+    <td class="muted">${esc(x['분류'])}</td><td>${tagCell(x['태그'])}</td>
+    <td>${esc(x['설명'])}</td><td class="muted">${esc(x['비고']||'')}</td></tr>`).join(''));
+}
+function rowsArtist(q){
+  let r=S.artist;
+  if(q) r=r.filter(x=>(x['태그']+' '+x['섹션']).toLowerCase().includes(q));
+  hit(r.length);
+  return tbl(['섹션','태그','네거티브 추천'], r.map(x=>`<tr>
+    <td class="muted">${esc(x['섹션'])}</td><td>${tagCell('artist:'+x['태그'])}</td>
+    <td>${x['네거티브_추천']==='Y'?'<span class="nsfw">Y</span>':''}</td></tr>`).join(''));
+}
+function rowsLinks(q){
+  let r=S.links;
+  if(q) r=r.filter(x=>(x['이름']+' '+x['용도']+' '+x['분류']).toLowerCase().includes(q));
+  hit(r.length);
+  return tbl(['','분류','이름','용도','수집'], r.map(x=>`<tr>
+    <td class="muted">${esc(x._src)}</td><td class="muted">${esc(x['분류'])}</td>
+    <td><a href="${esc(x['URL'])}" target="_blank" rel="noopener">${esc(x['이름'])}</a></td>
+    <td class="muted">${esc(x['용도'])}</td>
+    <td class="muted">${x['자동수집']==='가능'?'':esc(x['자동수집'])}</td></tr>`).join(''));
+}
+
+/* ── 담기 ───────────────────────────────────── */
+function guessSlot(t){
+  const r=S.dict.find(x=>(x['태그']||'').split(',').some(s=>s.trim()===t));
+  const k=(r?r['분류1']+r['분류2']:'')+t;
+  const M=[[/1girl|1boy|solo|인원/,1],[/looking|시선/,3],[/눈|얼굴|lips|eyelash/,4],[/머리|hair|bangs/,5],
+    [/breast|상체|shoulder|pectoral/,6],[/thigh|하체|leg/,7],[/sweat|wet|신체/,8],
+    [/knight|elf|maid|직업|종족/,9],[/자세|standing|sitting|kneel/,11],[/동작|holding/,12],
+    [/감정|smil|angry|happy|blush/,13],[/재질|leather|metal|latex/,15],[/상의|shirt|jacket/,17],
+    [/coat|glove|겉옷/,18],[/skirt|하의|thighhigh/,19],[/의상|uniform/,14],
+    [/머리 장식|hairpin|choker|tiara|목/,20],[/bracelet|belt|허리/,21],[/boots|heels|신발/,23],
+    [/배경|classroom|castle/,24],[/light|fog|bokeh|분위기/,26],[/체형|slim|muscular|narrow/,6]];
+  for(const [re,n] of M) if(re.test(k)) return n;
+  return 0;
+}
+function add(t){ if(!S.cart.some(c=>c.t===t)){ S.cart.push({t,s:guessSlot(t)}); saveCart(); } toast(t+' 담음'); }
+function drawCart(){
+  $('#cn').textContent=S.cart.length;
+  $('#clist').innerHTML = S.cart.map((c,i)=>`<div class="ci">
+    <select onchange="S.cart[${i}].s=+this.value;saveCart()">
+      ${SLOTS.map((s,n)=>`<option value="${n}"${c.s===n?' selected':''}>${esc(s)}</option>`).join('')}
+    </select><span class="t" title="${esc(c.t)}">${esc(c.t)}</span>
+    <button class="x" onclick="S.cart.splice(${i},1);saveCart()">✕</button></div>`).join('')
+    || '<p class="muted" style="padding:12px">태그 탭에서 태그를 눌러 담으세요.</p>';
+  if(S.tab==='build') drawBuild();
+}
+const saveCart=()=>{ localStorage.setItem('char.cart',JSON.stringify(S.cart)); drawCart(); };
+const loadCart=()=>{ try{ S.cart=JSON.parse(localStorage.getItem('char.cart'))||[]; }catch{ S.cart=[]; } drawCart(); };
+
+/* ── 조립 ───────────────────────────────────── */
+function assemble(){
+  const by={}; for(const c of S.cart) (by[c.s] ||= []).push(c.t);
+  const mid = SLOTS.map((_,n)=>by[n]).filter(Boolean).map(a=>a.join(', ')).join(', ');
+  const pre = $('#pArt') ? $('#pArt').value.trim() : '';
+  const q   = $('#pQ') ? S.presets.Q[$('#pQ').value]||'' : '';
+  return { mid, full:[pre,mid,q].filter(Boolean).join(', '),
+           neg: $('#pN') ? S.presets.N[$('#pN').value]||'' : '' };
+}
+function drawBuild(){
+  const by={}; for(const c of S.cart) (by[c.s] ||= []).push(c.t);
+  const a=assemble();
+  $('#main').innerHTML = `<div class="bar">
+    <input type="text" id="pArt" placeholder="작가 태그 (선택)" style="min-width:240px" value="${esc(window._pArt||'')}">
+    <select id="pQ"><option value="">퀄리티 없음</option>${Object.keys(S.presets.Q).map(k=>`<option${k==='Q3'?' selected':''}>${k}</option>`).join('')}</select>
+    <select id="pN"><option value="">부정 없음</option>${Object.keys(S.presets.N).map(k=>`<option${k==='N4'?' selected':''}>${k}</option>`).join('')}</select>
+    <span class="sp" style="flex:1"></span>
+    <button class="btn pri" id="cAll">전체 복사</button>
+    <button class="btn" id="cNeg">부정만 복사</button>
+  </div>
+  <h3 style="margin:0 0 6px">26슬롯</h3>
+  ${SLOTS.map((s,n)=>`<div class="slot${by[n]?'':' empty'}">
+     <span class="n">${s.slice(0,2)}</span><span class="muted">${esc(s.slice(3))}</span>
+     <span class="v">${by[n]?esc(by[n].join(', ')):''}</span></div>`).join('')}
+  <h3>조립 결과 <span class="muted" style="font-weight:400">추가 프롬프트 칸</span></h3>
+  <pre id="out">${esc(a.full)||'<span class="muted">담은 태그가 없습니다.</span>'}</pre>
+  <h3>부정 프롬프트 <span class="muted" style="font-weight:400">부정 프롬프트 칸</span></h3>
+  <pre>${esc(a.neg)||'—'}</pre>`;
+  const re=()=>{ window._pArt=$('#pArt').value; drawBuild(); };
+  $('#pArt').oninput=()=>{window._pArt=$('#pArt').value; const x=assemble(); $('#out').textContent=x.full;};
+  $('#pQ').onchange=$('#pN').onchange=re;
+  $('#cAll').onclick=()=>copy(assemble().full,'조립 결과');
+  $('#cNeg').onclick=()=>copy(assemble().neg,'부정 프롬프트');
+}
+
+/* ── 검토 (05_검토/02 A·B절 기계 판정) ───────── */
+function drawCheck(){
+  $('#main').innerHTML = `<div class="bar"><strong>이미지 프롬프트 검토</strong>
+    <span class="muted">05_검토/02 의 A·B절을 사전 대조로 판정합니다</span></div>
+    <textarea id="in" placeholder="프롬프트를 붙여넣으세요"></textarea>
+    <div class="bar" style="margin-top:10px"><button class="btn pri" id="go">검사</button>
+      <span class="muted">A1 태그 실재 · A2 언더바 · A3 NSFW · B2 숫자 끝 공백 · B4 :: 짝</span></div>
+    <div id="rep"></div>`;
+  $('#go').onclick=()=>{
+    const raw=$('#in').value;
+
+    /* `3::a, b, c::` 처럼 가중치 그룹 안의 쉼표로는 자르지 않는다. */
+    const splitTop = s => {
+      const out=[]; let cur='', depth=0;
+      for(let i=0;i<s.length;i++){
+        if(s[i]===':'&&s[i+1]===':'){ depth=depth?0:1; cur+='::'; i++; continue; }
+        if(s[i]===','&&!depth){ out.push(cur); cur=''; continue; }
+        cur+=s[i];
+      }
+      out.push(cur); return out.map(t=>t.trim()).filter(Boolean);
+    };
+    const content = t => t.replace(/^-?[\d.]+::/,'').replace(/::$/,'').trim();
+    const norm = t => t.replace(/_/g,' ').trim().toLowerCase();
+
+    const groups = splitTop(raw);
+    const miss=[], preset=[], und=[], nsfw=[], numsp=[];
+    const nsfwSet=new Set(S.dict.filter(r=>r['NSFW']==='TRUE')
+      .flatMap(r=>(r['태그']||'').split(',').map(x=>norm(x))));
+
+    let count=0;
+    for(const g of groups){
+      const inner = content(g);
+      /* 가중치 그룹의 닫는 :: 바로 앞이 숫자면 한 칸 띄어야 한다 */
+      if(/::/.test(g) && /\d$/.test(inner) && !/\d\s::/.test(g)) numsp.push(g);
+      for(const t of inner.split(',')){       /* 그룹 안 개별 태그까지 검사 */
+        const b=t.trim(); if(!b) continue;
+        count++;
+        if(b.includes('_')) und.push(b);
+        const n=norm(b.replace(/^artist:\s*/,''));
+        if(nsfwSet.has(n)) nsfw.push(b);
+        if(!S.tagset.has(n) && !/^artist:/.test(b)){
+          (S.preset_vocab.has(n) ? preset : miss).push(b);
+        }
+      }
+    }
+    const colons=(raw.match(/::/g)||[]).length;
+    const uniq=a=>[...new Set(a)];
+    const chips=a=>uniq(a).map(t=>`<code>${esc(t)}</code>`).join(' ');
+    const R=(ok,title,body)=>`<div class="res ${ok?'ok':'no'}"><strong>${title}</strong>${body?'<br>'+body:''}</div>`;
+
+    $('#rep').innerHTML = `<h3>결과 <span class="muted" style="font-weight:400">태그 ${count}개 · 최상위 ${groups.length}덩어리</span></h3>`
+      + R(!miss.length, `A1 태그 실재 — ${miss.length?uniq(miss).length+'개 확인 필요':'전부 확인됨'}`,
+          miss.length?chips(miss)
+            +'<br><span class="muted">태그사전·스타일태그·프리셋 어디에도 없습니다. 지어낸 태그이거나 표기가 다를 수 있으니 태그 탭에서 확인하세요.</span>'
+          :'')
+      + (preset.length?`<div class="res"><strong>참고 — 프리셋 어휘 ${uniq(preset).length}개</strong><br>${chips(preset)}
+          <br><span class="muted">태그사전엔 없지만 Q·N 프리셋에서 쓰는 퀄리티·조명 어휘입니다. 정상입니다.</span></div>`:'')
+      + R(!und.length, `A2 언더바 — ${und.length?uniq(und).length+'개':'없음'}`,
+          und.length?chips(und)+'<br><span class="muted">띄어쓰기로 바꿔야 합니다.</span>':'')
+      + R(!nsfw.length, `A3 NSFW — ${nsfw.length?uniq(nsfw).length+'개 포함':'없음'}`, nsfw.length?chips(nsfw):'')
+      + R(!numsp.length, `B2 숫자로 끝나는 태그 — ${numsp.length?uniq(numsp).length+'개':'문제 없음'}`,
+          numsp.length?chips(numsp)+'<br><span class="muted">닫는 <code>::</code> 앞이 숫자면 한 칸 띄웁니다 → <code>1.2::year 2024 ::</code></span>':'')
+      + R(colons%2===0, `B4 <code>::</code> 짝 — ${colons}개 ${colons%2?'(홀수 · 짝이 안 맞습니다)':'(맞음)'}`,
+          colons%2?'<span class="muted">짝이 안 맞으면 해당 구간이 통째로 무시됩니다.</span>':'');
+  };
+}
+
+/* ── 공통 ───────────────────────────────────── */
+function setTab(t){
+  S.tab=t; document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
+  ({read:()=>show(S.cur||S.files[0]), tag:drawTag, build:drawBuild, check:drawCheck})[t]();
+}
+function copy(text,label){
+  navigator.clipboard.writeText(text).then(()=>toast((label||'')+' 복사됨'),()=>toast('복사 실패'));
+}
+let tt; function toast(m){ const e=$('#toast'); e.textContent=m; e.classList.add('on');
+  clearTimeout(tt); tt=setTimeout(()=>e.classList.remove('on'),1300); }
+
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>setTab(b.dataset.t));
+$('#clear').onclick=()=>{ if(S.cart.length && confirm('담은 태그를 모두 비울까요?')){ S.cart=[]; saveCart(); } };
+boot();
+</script>
+</body>
+</html>

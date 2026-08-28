@@ -1,10 +1,11 @@
 // 북마크 저장소 — 내가 보려고 골라둔 글. 수집 데이터와 완전히 분리돼 있다.
 import fs from 'node:fs';
 import path from 'node:path';
+import { dataDir } from './paths.mjs';
 
 export class Bookmarks {
   constructor(root, galleryId) {
-    this.file = path.join(root, 'data', galleryId, 'bookmarks.json');
+    this.file = path.join(dataDir(root), galleryId, 'bookmarks.json');
     this.data = this.read();
   }
   read() {

@@ -10,6 +10,7 @@
 //   닉네임 · 고정닉 uid · 댓글 IP 조각 · 이미지 파일 사본 · 원본 HTML
 import fs from 'node:fs';
 import path from 'node:path';
+import { setDataDir, confFile } from './lib/paths.mjs';
 import { fileURLToPath } from 'node:url';
 import { Store } from './lib/store.mjs';
 import { Labels } from './lib/labels.mjs';
@@ -20,7 +21,8 @@ const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const args = Object.fromEntries(
   [...process.argv.slice(2).join(' ').matchAll(/--([\w-]+)(?:[= ]([^-\s]\S*))?/g)].map((m) => [m[1], m[2] ?? true])
 );
-const cfg = JSON.parse(fs.readFileSync(path.join(ROOT, 'config.json'), 'utf8'));
+setDataDir(ROOT, args.data ? String(args.data) : null);
+const cfg = JSON.parse(fs.readFileSync(confFile(ROOT, 'config.json'), 'utf8'));
 const galleryId = args.gallery || cfg.gallery.id;
 const level = String(args.level || 'meta');
 if (!['meta', 'text', 'full'].includes(level)) {
@@ -30,7 +32,7 @@ if (!['meta', 'text', 'full'].includes(level)) {
 const outDir = path.resolve(String(args.out || path.join(ROOT, 'public')));
 
 const glos = new Glossary(ROOT);
-const tax = compile(JSON.parse(fs.readFileSync(path.join(ROOT, 'taxonomy.json'), 'utf8')), glos);
+const tax = compile(JSON.parse(fs.readFileSync(confFile(ROOT, 'taxonomy.json'), 'utf8')), glos);
 const store = new Store(ROOT, galleryId);
 const labels = new Labels(ROOT, galleryId);
 

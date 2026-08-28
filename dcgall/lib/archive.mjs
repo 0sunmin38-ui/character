@@ -6,13 +6,14 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { parseView, parseComments } from './parse.mjs';
+import { dataDir } from './paths.mjs';
 
 const EXT = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/gif': '.gif', 'image/webp': '.webp',
               'video/mp4': '.mp4', 'image/bmp': '.bmp' };
 
 export class Archive {
   constructor(root, galleryId) {
-    this.dir = path.join(root, 'data', galleryId, 'archive');
+    this.dir = path.join(dataDir(root), galleryId, 'archive');
     this.galleryId = galleryId;
     fs.mkdirSync(this.dir, { recursive: true });
   }

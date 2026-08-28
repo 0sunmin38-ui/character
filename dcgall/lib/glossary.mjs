@@ -1,10 +1,11 @@
 // 은어 사전 로더 — 분류기·마이너·리포트가 공유한다.
 import fs from 'node:fs';
 import path from 'node:path';
+import { confFile } from './paths.mjs';
 
 export class Glossary {
   constructor(root) {
-    this.file = path.join(root, 'glossary.json');
+    this.file = confFile(root, 'glossary.json');
     this.data = JSON.parse(fs.readFileSync(this.file, 'utf8'));
     this.index();
   }

@@ -2,6 +2,7 @@
 // 원문이 지워져도 그대로 남는다.
 import fs from 'node:fs';
 import path from 'node:path';
+import { confFile } from './paths.mjs';
 import { Store } from './store.mjs';
 import { Labels } from './labels.mjs';
 import { Archive } from './archive.mjs';
@@ -12,8 +13,8 @@ import { CSS } from './render.mjs';
 import { gnbHtml } from './nav.mjs';
 
 export function buildLibrary(ROOT, opts = {}) {
-  const cfg = JSON.parse(fs.readFileSync(path.join(ROOT, 'config.json'), 'utf8'));
-  const taxRaw = JSON.parse(fs.readFileSync(path.join(ROOT, 'taxonomy.json'), 'utf8'));
+  const cfg = JSON.parse(fs.readFileSync(confFile(ROOT, 'config.json'), 'utf8'));
+  const taxRaw = JSON.parse(fs.readFileSync(confFile(ROOT, 'taxonomy.json'), 'utf8'));
   const glos = new Glossary(ROOT);
   const tax = compile(taxRaw, glos);
   const galleryId = opts.gallery || cfg.gallery.id;

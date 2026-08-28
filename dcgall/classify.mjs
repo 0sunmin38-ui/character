@@ -8,6 +8,7 @@
 //   node dcgall/classify.mjs --import ~/Downloads/labels.json   뷰어(정적 모드) 내보내기 병합
 import fs from 'node:fs';
 import path from 'node:path';
+import { setDataDir, dataArg, confFile } from './lib/paths.mjs';
 import { fileURLToPath } from 'node:url';
 import { Store } from './lib/store.mjs';
 import { Labels } from './lib/labels.mjs';
@@ -16,13 +17,14 @@ import { Glossary } from './lib/glossary.mjs';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const argv = process.argv.slice(2);
+setDataDir(ROOT, dataArg(argv));
 const flag = (n) => { const i = argv.indexOf('--' + n); return i < 0 ? null : (argv[i + 1] ?? true); };
 const setArgs = (() => { const i = argv.indexOf('--set'); return i < 0 ? null : [argv[i + 1], argv[i + 2]]; })();
 
-const cfg = JSON.parse(fs.readFileSync(path.join(ROOT, 'config.json'), 'utf8'));
+const cfg = JSON.parse(fs.readFileSync(confFile(ROOT, 'config.json'), 'utf8'));
 const galleryId = flag('gallery') || cfg.gallery.id;
 const glos = new Glossary(ROOT);
-const tax = compile(JSON.parse(fs.readFileSync(path.join(ROOT, 'taxonomy.json'), 'utf8')), glos);
+const tax = compile(JSON.parse(fs.readFileSync(confFile(ROOT, 'taxonomy.json'), 'utf8')), glos);
 const store = new Store(ROOT, galleryId);
 const labels = new Labels(ROOT, galleryId);
 

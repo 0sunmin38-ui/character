@@ -5,10 +5,11 @@
 //   data/<gallery>/state.json            커서 (마지막 최대 글번호 등)
 import fs from 'node:fs';
 import path from 'node:path';
+import { dataDir } from './paths.mjs';
 
 export class Store {
   constructor(root, galleryId) {
-    this.dir = path.join(root, 'data', galleryId);
+    this.dir = path.join(dataDir(root), galleryId);
     this.postsDir = path.join(this.dir, 'posts');
     this.runsDir = path.join(this.dir, 'runs');
     fs.mkdirSync(this.postsDir, { recursive: true });

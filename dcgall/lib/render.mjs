@@ -2,6 +2,7 @@
 // report.mjs(파일로 굽기) 와 serve.mjs(로컬 서버) 가 이 함수를 공유한다.
 import fs from 'node:fs';
 import path from 'node:path';
+import { confFile } from './paths.mjs';
 import { Store } from './store.mjs';
 import { Labels } from './labels.mjs';
 import { compile, classify } from './classify.mjs';
@@ -10,8 +11,8 @@ import { Bookmarks } from './bookmarks.mjs';
 import { gnbHtml } from './nav.mjs';
 
 export function buildReport(ROOT, opts = {}) {
-  const cfg = JSON.parse(fs.readFileSync(path.join(ROOT, 'config.json'), 'utf8'));
-  const taxRaw = JSON.parse(fs.readFileSync(path.join(ROOT, 'taxonomy.json'), 'utf8'));
+  const cfg = JSON.parse(fs.readFileSync(confFile(ROOT, 'config.json'), 'utf8'));
+  const taxRaw = JSON.parse(fs.readFileSync(confFile(ROOT, 'taxonomy.json'), 'utf8'));
   const glos = new Glossary(ROOT);
   const tax = compile(taxRaw, glos);
   const galleryId = opts.gallery || cfg.gallery.id;

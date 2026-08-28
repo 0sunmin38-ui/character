@@ -1,12 +1,13 @@
 // 은어 사전 — 독립 페이지. 수집 목록은 싣지 않는다.
 import fs from 'node:fs';
 import path from 'node:path';
+import { confFile } from './paths.mjs';
 import { Glossary } from './glossary.mjs';
 import { CSS } from './render.mjs';
 import { gnbHtml } from './nav.mjs';
 
 export function buildGlossaryPage(ROOT, opts = {}) {
-  const cfg = JSON.parse(fs.readFileSync(path.join(ROOT, 'config.json'), 'utf8'));
+  const cfg = JSON.parse(fs.readFileSync(confFile(ROOT, 'config.json'), 'utf8'));
   const server = !!opts.server;
   const glos = new Glossary(ROOT);
   const g = glos.data;

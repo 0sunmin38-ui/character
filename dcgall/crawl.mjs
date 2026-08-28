@@ -7,6 +7,7 @@
 // 실제 수집 로직은 lib/crawler.mjs 에 있고 뷰어의 '수집' 버튼과 공유한다.
 import fs from 'node:fs';
 import path from 'node:path';
+import { setDataDir, dataArg, confFile } from './lib/paths.mjs';
 import { fileURLToPath } from 'node:url';
 import { runCrawl } from './lib/crawler.mjs';
 import { Glossary } from './lib/glossary.mjs';
@@ -28,7 +29,8 @@ function parseArgs(argv) {
 }
 
 const args = parseArgs(process.argv.slice(2));
-const cfg = JSON.parse(fs.readFileSync(path.join(ROOT, 'config.json'), 'utf8'));
+setDataDir(ROOT, args.data && args.data !== true ? String(args.data) : null);
+const cfg = JSON.parse(fs.readFileSync(confFile(ROOT, 'config.json'), 'utf8'));
 
 const jobName = args.job || (args.mode ? null : 'daily');
 if (jobName && !cfg.jobs[jobName]) {

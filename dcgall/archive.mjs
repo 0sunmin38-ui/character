@@ -9,6 +9,7 @@
 //   node dcgall/archive.mjs                        현황
 import fs from 'node:fs';
 import path from 'node:path';
+import { setDataDir, dataArg, confFile } from './lib/paths.mjs';
 import { fileURLToPath } from 'node:url';
 import { Http } from './lib/http.mjs';
 import { Store } from './lib/store.mjs';
@@ -17,9 +18,10 @@ import { Bookmarks } from './lib/bookmarks.mjs';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const argv = process.argv.slice(2);
+setDataDir(ROOT, dataArg(argv));
 const flag = (n) => { const i = argv.indexOf('--' + n); return i < 0 ? null : (argv[i + 1] ?? true); };
 
-const cfg = JSON.parse(fs.readFileSync(path.join(ROOT, 'config.json'), 'utf8'));
+const cfg = JSON.parse(fs.readFileSync(confFile(ROOT, 'config.json'), 'utf8'));
 const galleryId = flag('gallery') || cfg.gallery.id;
 const http = new Http(cfg.http);
 const store = new Store(ROOT, galleryId);

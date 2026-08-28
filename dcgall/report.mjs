@@ -10,10 +10,13 @@ import { buildReport } from './lib/render.mjs';
 import { buildLibrary } from './lib/library.mjs';
 import { buildGlossaryPage } from './lib/glossary-page.mjs';
 
+import { setDataDir, confFile } from './lib/paths.mjs';
+
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const args = Object.fromEntries(
   [...process.argv.slice(2).join(' ').matchAll(/--([\w-]+)(?:[= ]([^-\s]\S*))?/g)].map((m) => [m[1], m[2] ?? true])
 );
+setDataDir(ROOT, args.data ? String(args.data) : null);
 const outPath = args.out ? path.resolve(String(args.out)) : path.join(ROOT, 'out', 'index.html');
 const html = buildReport(ROOT, {
   gallery: args.gallery, server: false,

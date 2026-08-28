@@ -1,10 +1,11 @@
 // 수동 라벨 저장소 — 자동 분류를 덮어쓴다. 뷰어/CLI 양쪽에서 같은 파일을 쓴다.
 import fs from 'node:fs';
 import path from 'node:path';
+import { dataDir } from './paths.mjs';
 
 export class Labels {
   constructor(root, galleryId) {
-    this.file = path.join(root, 'data', galleryId, 'labels.json');
+    this.file = path.join(dataDir(root), galleryId, 'labels.json');
     this.data = this.read();
   }
   read() {

@@ -5,12 +5,14 @@
 //   node dcgall/scrub.mjs           실제로 지움
 import fs from 'node:fs';
 import path from 'node:path';
+import { setDataDir, dataArg, confFile } from './lib/paths.mjs';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
+setDataDir(ROOT, dataArg(args));
 const dry = args.includes('--dry');
-const cfg = JSON.parse(fs.readFileSync(path.join(ROOT, 'config.json'), 'utf8'));
+const cfg = JSON.parse(fs.readFileSync(confFile(ROOT, 'config.json'), 'utf8'));
 const gid = cfg.gallery.id;
 const dir = path.join(ROOT, 'data', gid);
 

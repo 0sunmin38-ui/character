@@ -9,6 +9,7 @@
 // 기각한 말은 stopwords 로 남아 다시는 후보에 오르지 않는다. 쓸수록 정확해지는 구조.
 import fs from 'node:fs';
 import path from 'node:path';
+import { setDataDir, dataArg, confFile } from './lib/paths.mjs';
 import { fileURLToPath } from 'node:url';
 import { Store } from './lib/store.mjs';
 import { Glossary } from './lib/glossary.mjs';
@@ -16,9 +17,10 @@ import { mine, SEED_STOP } from './lib/miner.mjs';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const argv = process.argv.slice(2);
+setDataDir(ROOT, dataArg(argv));
 const flag = (n) => { const i = argv.indexOf('--' + n); return i < 0 ? null : (argv[i + 1] ?? true); };
 
-const cfg = JSON.parse(fs.readFileSync(path.join(ROOT, 'config.json'), 'utf8'));
+const cfg = JSON.parse(fs.readFileSync(confFile(ROOT, 'config.json'), 'utf8'));
 const galleryId = flag('gallery') || cfg.gallery.id;
 const glos = new Glossary(ROOT);
 const store = new Store(ROOT, galleryId);
