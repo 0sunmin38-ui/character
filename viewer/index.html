@@ -159,7 +159,12 @@ textarea{width:100%;min-height:130px;padding:11px;border:1px solid var(--line);b
   color:var(--bg);padding:8px 18px;border-radius:20px;font-size:13px;opacity:0;
   transition:opacity .2s;pointer-events:none;z-index:99}
 .toast.on{opacity:1}
-@media(max-width:1000px){#app{grid-template-columns:1fr}#side,#cart,.rz{display:none}}
+/* 좁은 화면에서는 한 칸으로. #app.nos / #app.noc 가 특이도로 이기지 않도록
+   같은 선택자를 모두 적어준다 — 안 그러면 칼럼은 5개인데 패널만 사라져 빈 칸이 남는다. */
+@media(max-width:1000px){
+  #app,#app.nos,#app.noc,#app.nos.noc{grid-template-columns:1fr}
+  #side,#cart,.rz{display:none}
+}
 </style>
 </head>
 <body>
