@@ -1,10 +1,8 @@
 ﻿분류,이름,URL,용도,자동수집,로컬 파일
 태그 사전,아카라이브 AI그림 채널 위키 — 프롬프트 태그 정보,https://arca.live/w/aiart/%ED%94%84%EB%A1%AC%ED%94%84%ED%8A%B8%20%ED%83%9C%EA%B7%B8%20%EC%A0%95%EB%B3%B4,태그 정보 위키 상위 문서. 하위 문서들이 이 아래에 달림,불가 (403 봇차단),
 태그 사전,└ 품질과 이펙트,https://arca.live/w/aiart/%ED%94%84%EB%A1%AC%ED%94%84%ED%8A%B8%20%ED%83%9C%EA%B7%B8%20%EC%A0%95%EB%B3%B4%2F%ED%92%88%EC%A7%88%EA%B3%BC%20%EC%9D%B4%ED%8E%99%ED%8A%B8,퀄리티 태그·이펙트 태그,불가 (403 봇차단),일부 반영: 03_프롬프트/이미지/스타일프리셋/
-태그 사전,NovelAI 태그 모음 (구글 시트),https://docs.google.com/spreadsheets/d/18CA__L4yQOs9xAQslP5FUvooD8i8Wz-D7yCnsIYqoBM/edit?usp=sharing,태그 사전 원본. 시트 관리자 @AiTAG @Gangjun,가능,01_자료/이미지/
 태그 사전,아카라이브 — 최초 태그 목록,https://arca.live/b/aiart/60525644,위 구글 시트의 최초 출처,불가 (451),
 태그 사전,NovelAI 공식 문서 (이미지),https://docs.novelai.net/en/image,설정값·기능 공식 설명,가능,
-작가 태그,작가 태그 모음 (Notion),https://www.notion.so/316abdd5a74f80d98e80db9fd00f5e4d,작가 태그 140개 + 샘플 생성 조건,가능,01_자료/이미지/
 작가 태그,nax.moe,https://nax.moe/,작가 태그 검색,가능,
 작가 태그,NoobAI-XL Danbooru Artist,https://www.downloadmost.com/NoobAI-XL/danbooru-artist/,Danbooru 작가 목록,가능,
 작가 태그,gamegirlps,https://gamegirlps.netlify.app/,작가 태그 브라우징,가능,
@@ -13,7 +11,4 @@
 작가 태그,피쿠 — 작가 태그 랭킹,https://www.piku.co.kr/w/rank/39PiF1,작가 태그 모음,불가 (403 봇차단),
 작가 태그,Danbooru,https://hijiribe.donmai.us,태그 원본 이미지보드. 태그 실제 용례 확인,불가 (403 봇차단),
 작가 태그,Kaloscope 화풍 분류기,https://huggingface.co/spaces/DraconicDragon/Kaloscope-artist-style-classifier,"이미지를 넣으면 유사 화풍 작가를 찾아줌. Top K로 인원 조절, Threshold는 0 권장",가능,
-커뮤니티 정보글,디시 — AI 그림의 거의 모든 것 1.1,https://gall.dcinside.com/mgallery/board/view/?id=aichatting&no=206486,NAI 종합 정보글 (V4.5 Full),가능,00_가이드/이미지/04_NAI팁_설정과문법.md
-커뮤니티 정보글,디시 — nai 2D 그림체 공유,https://gall.dcinside.com/mgallery/board/view/?id=aichatting&no=58236,부정 프롬프트 원본,가능,03_프롬프트/이미지/스타일프리셋/부정_프롬프트_모음.md (N6)
-커뮤니티 정보글,디시 — 남캐 (근육)체형을 위한 태그,https://gall.dcinside.com/mgallery/board/view/?id=aichatting&no=58523,근육·체형 태그,가능,01_자료/이미지/1-태그사전.csv
 생성 도구,Nai 프롬프트 생성,https://gemini.google.com/gem/1dtHnDjIP98SgyQCb-DQvCKjn6gT7Bazm?usp=sharing,컨셉을 Nai 태그 프롬프트로 변환하는 공유 Gem,불가 (로그인/SPA),

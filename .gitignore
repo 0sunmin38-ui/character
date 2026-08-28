@@ -10,3 +10,6 @@ dcgall/out/
 
 # 병행 작업용 워크트리·로컬 설정
 dcgall/.claude/
+
+# 뷰어가 굴리는 임시 그림 캐시. 보존본은 viewer/img/ 이고 그쪽은 커밋한다
+viewer/.imgcache/

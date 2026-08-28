@@ -23,7 +23,15 @@ async function walk(dir, out = []) {
   return out;
 }
 
+/* 작가 견본 그림은 확장자가 달라 walk() 가 안 줍는다.
+   정적 호스팅에서는 디렉터리 목록을 못 보므로 여기 적어 둬야 뷰어가 찾는다. */
+const SAMPLE_DIR = join('01_자료', '이미지', '작가샘플');
+let samples = [];
+try { samples = (await readdir(join(ROOT, SAMPLE_DIR)))
+        .filter(n => !n.startsWith('.') && /\.(webp|png|jpe?g|gif|avif)$/i.test(n)).sort(); }
+catch {}
+
 const files = (await walk(ROOT)).sort();
 const out = join(ROOT, 'viewer', 'manifest.json');
-await writeFile(out, JSON.stringify({ generated: new Date().toISOString(), files }, null, 2) + '\n');
-console.log(`viewer/manifest.json — ${files.length}개 파일`);
+await writeFile(out, JSON.stringify({ generated: new Date().toISOString(), files, samples }, null, 2) + '\n');
+console.log(`viewer/manifest.json — ${files.length}개 파일 · 작가 견본 ${samples.length}장`);
