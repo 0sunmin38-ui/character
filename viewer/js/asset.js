@@ -195,11 +195,58 @@ function tbl(head,body,grid){
     return `<th${c?` class="${c}"`:''}>${t}</th>`; }).join('');
   return `<table class="${grid?'grid':''}"><thead><tr>${th}</tr></thead><tbody>${body}</tbody></table>`;
 }
+/* ── 북마크 ──────────────────────────────────
+   담기(카트)와 다른 것이다. 카트는 지금 짜는 한 장을 위한 임시 더미이고,
+   북마크는 4천 줄에서 건진 '내가 계속 쓰는 것' 으로 남는다. */
+const MARKS = new Set((()=>{ try{ return JSON.parse(localStorage.getItem('char.marks'))||[]; }
+                             catch{ return []; } })());
+const marked = t => MARKS.has(t);
+let onlyMark = localStorage.getItem('char.onlymark')==='1';
+
+function toggleMark(t){
+  MARKS.has(t) ? MARKS.delete(t) : MARKS.add(t);
+  localStorage.setItem('char.marks', JSON.stringify([...MARKS]));
+  /* 표를 다시 그리지 않는다. 같은 태그를 그린 칩만 골라 갈아끼운다 */
+  document.querySelectorAll('.tag').forEach(el=>{
+    if(el.dataset.t!==t) return;
+    el.classList.toggle('mk', MARKS.has(t));
+    const b = el.querySelector('.bm'); if(b) b.textContent = MARKS.has(t) ? '★' : '☆';
+  });
+  drawMarkBtn();
+  toast(t + (MARKS.has(t) ? ' 북마크' : ' 북마크 해제'));
+}
+
+/* 별은 칩 안에 있다. 칩을 누르면 담기고, 별을 누르면 북마크다.
+   캡처 단계에서 잡아 칩의 onclick(담기) 까지 내려가지 않게 막는다. */
+document.addEventListener('click', e => {
+  const b = e.target.closest?.('.bm'); if(!b) return;
+  const chip = b.closest('.tag'); if(!chip) return;
+  e.stopPropagation(); e.preventDefault();
+  toggleMark(chip.dataset.t);
+}, true);
+
+function drawMarkBtn(){
+  const b = $('#tgMark'); if(!b) return;
+  b.classList.toggle('on', onlyMark);
+  b.title = (onlyMark ? '북마크한 것만 보는 중 · 눌러서 전체' : '북마크한 것만 보기')
+          + ` (${MARKS.size}개)`;
+}
+if($('#tgMark')) $('#tgMark').onclick = () => {
+  onlyMark = !onlyMark;
+  localStorage.setItem('char.onlymark', onlyMark?'1':'0');
+  drawMarkBtn();
+  if(!MARKS.size && onlyMark){ toast('아직 북마크한 태그가 없습니다', true); return; }
+  setTab(S.tab);                      /* 보고 있던 화면을 그대로 다시 그린다 */
+};
+drawMarkBtn();
+
 /* 담는 자리(태그 탭)와 바로 넣는 자리(파츠 피커)가 다르다. 후자는 상위에서 클릭을 받는다 */
 function tagCell(t, mode){
+  const a = `class="tag${marked(t)?' mk':''}" data-t="${esc(t)}"`;
+  const star = `<i class="bm" title="북마크 (별을 누른다)">${marked(t)?'★':'☆'}</i>`;
   return mode==='pick'
-    ? `<span class="tag" data-t="${esc(t)}">${esc(t)}</span>`
-    : `<span class="tag" data-t="${esc(t)}" onclick="add('${esc(t).replace(/'/g,"\\'")}')">${esc(t)}</span>`;
+    ? `<span ${a}>${star}${esc(t)}</span>`
+    : `<span ${a} onclick="add('${esc(t).replace(/'/g,"\\'")}')">${star}${esc(t)}</span>`;
 }
 
 /* ── 에셋 화면 구성 ──────────────────────────
@@ -250,6 +297,7 @@ function dictPlain(){
     if(c2) r=r.filter(x=>x.s===c2);
     if(q) r=r.filter(x=>(x.ko+' '+x.tags.join(' ')+' '+x.g+' '+x.s+' '+x.note).toLowerCase().includes(q));
     if(sfw) r=r.filter(x=>!x.nsfw);
+    if(onlyMark) r=r.filter(x=>x.tags.some(marked));
     $('#rows').innerHTML = tbl(['목적|opt2 meta','분류|opt meta','세부|opt2 meta','뜻','태그','NSFW|meta','비고|opt meta'],'',true);
     const table = $('#rows').querySelector('table');
     wireGrid($('#rows'), 'plain', '#dbar');
@@ -298,8 +346,6 @@ function dictArtist(){
   const have = rows.filter(r=>idx[slugOf(r.tags[0])]).length;
   $('#dbody').innerHTML = `<div class="bar" id="abar">
       <input class="ctl" type="search" id="aq" placeholder="작가 태그 검색">
-      <select class="ctl" id="ag"><option value="">섹션 전체</option>
-        ${[...new Set(rows.map(r=>r.g))].map(g=>`<option>${esc(g)}</option>`).join('')}</select>
       <label class="muted"><input type="checkbox" id="aonly"> 견본 있는 것만</label>
       <span class="sp"></span>
       ${S.static?'':'<button class="btn i" id="padd" title="추가 (줄을 더블클릭하면 고칩니다)">＋</button>'}
@@ -307,57 +353,147 @@ function dictArtist(){
     <div id="form"></div>
     <div id="arows"></div>`;
   const run=()=>{
-    const q=$('#aq').value.trim().toLowerCase(), g=$('#ag').value, only=$('#aonly').checked;
+    const q=$('#aq').value.trim().toLowerCase(), only=$('#aonly').checked;
     let r=rows;
-    if(g) r=r.filter(x=>x.g===g);
     if(q) r=r.filter(x=>x.tags.join(' ').toLowerCase().includes(q));
     if(only) r=r.filter(x=>idx[slugOf(x.tags[0])]);
-    $('#arows').innerHTML = tbl(['태그','남캐','여캐','비고|opt meta','섹션|opt2 meta'], '', true);
+    if(onlyMark) r=r.filter(x=>x.tags.some(marked));
+    $('#arows').innerHTML = tbl(['태그','남캐','여캐','비고|opt meta'], '', true);
     const table = $('#arows').querySelector('table');
     wireGrid($('#arows'), 'artist', '#abar');
     /* 견본 그림이 무거워 한 번에 30줄씩 */
     lazyRows($('#arows'), r, (x,i)=>{
       const tag=x.tags[0], sl=slugOf(tag), got=idx[sl]||{};
-      const cell=sex=>`<td class="samp" data-slug="${esc(sl)}" data-sex="${sex}">`
+      const cell=sex=>`<td class="samp" tabindex="0" data-slug="${esc(sl)}" data-sex="${sex}">`
         + (got[sex]
             ? `<img src="${esc(ROOT+SAMPLE_DIR+'/'+got[sex])}" alt="${esc(tag)} ${sex}" loading="lazy">`
-            : `<span class="drop">${esc(sl)}_${sex}<br><span class="muted">여기로 끌어놓기</span></span>`)
+            : `<span class="drop">${esc(sl)}_${sex}<br><span class="muted">끌어놓기 · 눌러서 ${PASTE_KEY}</span></span>`)
         + `</td>`;
       return `<tr data-i="${i}"><td class="wrap">${tagCell(tag)}</td>${cell('남')}${cell('여')}
-        <td class="muted opt meta">${esc(x.note)}</td>
-        <td class="muted opt2 meta">${esc(x.g)}</td></tr>`;
-    }, 30, ()=>{ applyHidden(table,'artist'); wireDrop(idx, run); });
+        <td class="muted opt meta">${esc(x.note)}</td></tr>`;
+    }, 30, ()=>{ applyHidden(table,'artist'); wireDrop(idx); });
     $('#arows').ondblclick = e => {
       if(S.static || e.target.closest('.tag') || e.target.closest('.samp')) return;
       const tr = e.target.closest('tr'); if(!tr) return;
       openRowForm($('#form'), 'artist', r[+tr.dataset.i].src, ()=>dictArtist());
     };
   };
-  ['#aq','#ag','#aonly'].forEach(x=>{const e=$(x); e.oninput=e.onchange=run;});
+  ['#aq','#aonly'].forEach(x=>{const e=$(x); e.oninput=e.onchange=run;});
   if($('#padd')) $('#padd').onclick=()=>openRowForm($('#form'),'artist',null,()=>dictArtist());
   run();
 }
-function wireDrop(idx, redraw){
+/* 견본을 칸에 넣는 길은 둘이다: 끌어놓기, 그리고 칸을 눌러 고른 뒤 붙여넣기.
+   화면 갈무리는 클립보드에만 있다. 끌어놓을 파일이 아예 없다. */
+const PASTE_KEY = /Mac|iP(hone|ad)/.test(navigator.platform||'') ? '⌘V' : 'Ctrl+V';
+/* 붙여넣은 그림에는 파일명이 없다. 확장자를 MIME 에서 되찾는다 */
+const EXT_OF = {'image/png':'.png','image/jpeg':'.jpg','image/webp':'.webp',
+                'image/gif':'.gif','image/avif':'.avif'};
+const SAMPLE_MAX = 10 * 1024 * 1024;   /* serve.mjs 의 SAMPLE_MAX 와 같은 값 */
+let PICK = null;   /* 붙여넣기를 받을 칸 {slug,sex} · 표를 다시 그려도 남는다 */
+let SAMP = null;   /* 지금 그려진 표의 견본 색인 */
+
+/* 표에서는 158px 로 보이고, 이 파일은 저장소에 커밋된다.
+   화면 갈무리 PNG 를 원본 그대로 넣을 이유가 없다. 보내기 전에 줄인다. */
+const SAMPLE_PX = 900;          /* 긴 변 · 보이는 크기의 대여섯 배면 충분하다 */
+const SAMPLE_Q  = 0.86;
+const kb = n => (n/1024).toFixed(0)+'KB';
+
+/* 브라우저가 못 굽는 형식을 넘기면 toBlob 은 말없이 PNG 를 돌려준다.
+   달라는 걸 줬는지 blob.type 으로 확인한다. 이름만 .webp 인 PNG 를 만들지 않으려고. */
+async function encode(cv, type){
+  const blob = await new Promise(r => cv.toBlob(r, type, SAMPLE_Q));
+  return blob && blob.type === type ? blob : null;
+}
+
+async function shrink(file){
+  if(file.type === 'image/gif') return null;      /* 움직이는 걸 한 장으로 뭉개지 않는다 */
+  try{
+    const bmp = await createImageBitmap(file, {imageOrientation:'from-image'});
+    const k = Math.min(1, SAMPLE_PX / Math.max(bmp.width, bmp.height));
+    const w = Math.round(bmp.width*k), h = Math.round(bmp.height*k);
+    const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+    cv.getContext('2d').drawImage(bmp, 0, 0, w, h);
+    bmp.close?.();
+    /* webp 가 제일 작다. 못 구우면 jpeg. PNG 로 흘러가게 두지 않는다 — 사진에는 최악이다 */
+    const blob = await encode(cv,'image/webp') || await encode(cv,'image/jpeg');
+    /* 이미 작고 잘 눌린 원본을 굳이 다시 굽지 않는다 */
+    return blob && blob.size < file.size ? blob : null;
+  }catch{ return null; }                          /* 못 줄이면 원본으로 간다 */
+}
+
+async function putSample(td, file){
+  if(!file || !SAMP) return;
+  if(!S.asset){ toast('서버로 열어야 저장할 수 있습니다', true); return; }
+  const small = await shrink(file);
+  const src   = small || file;
+  const ext   = EXT_OF[src.type]
+              || (String(src.name||'').match(/\.[^.]+$/)||['.png'])[0].toLowerCase();
+  const name  = `${td.dataset.slug}_${td.dataset.sex}${ext}`;
+  if(src.size > SAMPLE_MAX){ toast(`${kb(src.size)} · 10MB 를 넘어 못 넣습니다`, true); return; }
+  const data = await new Promise(r=>{ const fr=new FileReader(); fr.onload=()=>r(fr.result); fr.readAsDataURL(src); });
+  const res  = await post('_asset', {name, data});
+  if(!res.ok){ toast('저장 실패: '+await res.text(), true); return; }
+  /* 서버가 같은 칸의 옛 확장자 파일을 치웠다면 목록에서도 뺀다 */
+  const info = await res.json().catch(()=>({}));
+  const dead = new Set([name, ...(info.removed||[])]);
+  S.samples = (S.samples||[]).filter(f=>!dead.has(f)).concat(name);
+  (SAMP.idx[td.dataset.slug] ||= {})[td.dataset.sex] = name;
+  /* 표를 다시 그리면 30줄씩 새로 깔리면서 스크롤이 맨 위로 튄다.
+     바뀐 건 이 칸 하나다. 이 칸만 바꾼다. */
+  const url = ROOT + SAMPLE_DIR + '/' + name;
+  td.innerHTML = `<img src="${esc(url)}?t=${Date.now()}" alt="${esc(name)}">`;
+  toast(name + ' 저장됨 · ' + (small ? `${kb(file.size)} → ${kb(small.size)}` : kb(file.size)));
+}
+
+/* 붙여넣기는 칸이 아니라 문서가 받는다. 표를 다시 그려도 살아 있게 한 번만 건다.
+   조용히 실패하지 않는다: 그림이 없으면 없다고, 칸을 안 골랐으면 고르라고 말한다. */
+document.addEventListener('paste', onPaste, true);
+
+function onPaste(e){
+  if(e.defaultPrevented) return;        /* 문서가 먼저 받아 처리했다. 두 번 올리지 않는다 */
+  const list = [...(e.clipboardData?.items||[])];
+  const item = list.find(i=>i.kind==='file' && i.type.startsWith('image/'));
+  const kinds = list.map(i=>i.kind+':'+(i.type||'?')).join(' ') || '빈 클립보드';
+  console.log('[견본] 붙여넣기', {칸:PICK, 클립보드:kinds});
+  if(!item){
+    if(PICK) toast('클립보드에 그림이 없습니다 — '+kinds, true);
+    return;                             /* 검색창에 글자 붙여넣는 건 그냥 지나간다 */
+  }
+  if(!PICK){ toast('넣을 칸을 먼저 누르세요', true); return; }
+  const td = $(`#arows td.samp[data-slug="${PICK.slug}"][data-sex="${PICK.sex}"]`);
+  if(!td){ toast('고른 칸이 화면에서 사라졌습니다. 다시 누르세요', true); PICK=null; return; }
+  e.preventDefault();
+  putSample(td, item.getAsFile());
+}
+document.addEventListener('keydown', e => { if(e.key==='Escape') unpick(); });
+
+function unpick(){
+  PICK = null;
+  document.querySelectorAll('#arows td.samp.pick').forEach(x=>x.classList.remove('pick'));
+}
+
+function wireDrop(idx){
+  SAMP = {idx};
   $('#arows').querySelectorAll('td.samp').forEach(td=>{
+    if(PICK && td.dataset.slug===PICK.slug && td.dataset.sex===PICK.sex) td.classList.add('pick');
     td.ondragover  = e => { e.preventDefault(); td.classList.add('over'); };
     td.ondragleave = () => td.classList.remove('over');
-    td.ondrop = async e => {
+    td.ondrop = e => {
       e.preventDefault(); td.classList.remove('over');
-      const file = (e.dataTransfer.files||[])[0];
-      if(!file) return;
-      if(!S.asset){ toast('서버로 열어야 저장할 수 있습니다', true); return; }
-      const ext  = (file.name.match(/\.[^.]+$/)||['.png'])[0].toLowerCase();
-      const name = `${td.dataset.slug}_${td.dataset.sex}${ext}`;
-      const data = await new Promise(r=>{ const fr=new FileReader(); fr.onload=()=>r(fr.result); fr.readAsDataURL(file); });
-      const res = await post('_asset', {name, data});
-      if(!res.ok){ toast('저장 실패: '+await res.text(), true); return; }
-      S.samples = (S.samples||[]).filter(f=>f!==name).concat(name);
-      (idx[td.dataset.slug] ||= {})[td.dataset.sex] = name;
-      toast(name+' 저장됨'); redraw();
+      putSample(td, (e.dataTransfer.files||[])[0]);
     };
-  });
-  $('#arows').querySelectorAll('td.samp img').forEach(img=>{
-    img.onclick = () => window.open(img.src,'_blank');
+    /* 한 번 누르면 붙여넣을 칸이 되고, 두 번 누르면 그림을 새 탭에서 연다 */
+    td.onclick = () => {
+      unpick();
+      td.classList.add('pick');
+      td.focus();                       /* 붙여넣기가 어디로 갈지 브라우저에게 못박는다 */
+      PICK = {slug:td.dataset.slug, sex:td.dataset.sex};
+      toast(`${PICK.slug}_${PICK.sex} · ${PASTE_KEY} 로 붙여넣기`);
+    };
+    td.onpaste = onPaste;               /* 칸이 포커스를 쥔 경우의 지름길 */
+    td.ondblclick = () => {
+      const img = td.querySelector('img'); if(img) window.open(img.src,'_blank');
+    };
   });
 }
 
@@ -375,6 +511,7 @@ function dictStyle(){
     let r=rows;
     if(g) r=r.filter(x=>x.g===g);
     if(q) r=r.filter(x=>(x.tags.join(' ')+' '+x.ko).toLowerCase().includes(q));
+    if(onlyMark) r=r.filter(x=>x.tags.some(marked));
     $('#srows').innerHTML = tbl(['분류|opt2 meta','세부|opt meta','태그','뜻'], '', true);
     const table = $('#srows').querySelector('table');
     wireGrid($('#srows'), 'style', '#sbar');
@@ -743,7 +880,12 @@ function guessSlot(t){
 }
 function add(t){
   if(!S.cart.some(c=>c.t===t)){ S.cart.push({t, s:guessSlot(t)}); saveCart(); }
-  toast(t+' 담음');
+  /* 담는 김에 클립보드에도 넣는다. 한 개만 쓸 거면 패널까지 갈 이유가 없다.
+     담긴 것과 복사된 것이 어긋나지 않게, 앱이 내보내는 그대로(언더바 포함) 복사한다. */
+  if(navigator.clipboard)
+    navigator.clipboard.writeText(t).then(()=>toast(t+' 담음 · 복사됨'),
+                                          ()=>toast(t+' 담음'));
+  else toast(t+' 담음');
 }
 function drawCart(){
   $('#cn').textContent=S.cart.length;

@@ -179,8 +179,20 @@ createServer(async (req, res) => {
       if (!abs.startsWith(resolve(ROOT, SAMPLE_DIR) + sep)) return send(res, 403, '허용되지 않은 경로입니다');
       await mkdir(resolve(ROOT, SAMPLE_DIR), { recursive: true });
       await writeFile(abs, buf);
-      console.log(`견본 ${SAMPLE_DIR}/${name}  ${(buf.length/1024).toFixed(0)}KB`);
-      return json(res, 200, { ok: true, path: `${SAMPLE_DIR}/${name}` });
+      /* 한 칸에는 견본이 하나다. 확장자만 다른 옛 파일은 화면에서 가려질 뿐 디스크에 남아
+         저장소를 불린다. 방금 덮어쓴 그 칸의 것만 골라 치운다. */
+      const stem = name.slice(0, -ext.length);
+      const gone = [];
+      for (const f of await readdir(resolve(ROOT, SAMPLE_DIR))) {
+        if (f === name) continue;
+        const e = extname(f).toLowerCase();
+        if (SAMPLE_EXT.has(e) && f.slice(0, -e.length) === stem) {
+          await unlink(resolve(ROOT, SAMPLE_DIR, f)); gone.push(f);
+        }
+      }
+      console.log(`견본 ${SAMPLE_DIR}/${name}  ${(buf.length/1024).toFixed(0)}KB`
+                  + (gone.length ? `  (옛것 삭제: ${gone.join(', ')})` : ''));
+      return json(res, 200, { ok: true, path: `${SAMPLE_DIR}/${name}`, removed: gone });
     }
 
     /* ── 원격 그림 받아오기 ────────────────────── */
