@@ -58,7 +58,7 @@ Coloring (색상),색상 스타일 태그,pale color,창백하고 옅은 색상�
 Coloring (색상),색상 스타일 태그,pastel colors,부드럽고 화사한 파스텔 톤 색상을 사용합니다.,
 Coloring (색상),색상 스타일 태그,flat color,명암이나 그라데이션 없이 단색으로만 채색합니다.,
 Coloring (색상),색상 스타일 태그,high contrast,밝은 부분과 어두운 부분의 대비가 강렬합니다.,
-Coloring (색상),색상 스타일 태그,sepia,세피아 톤으로 처리하여 오래된 사진 같은 느낌을 줍니다.,네거티브 프리셋에도 들어 있음 — 의도해 쓸 땐 부정 프롬프트에서 뺄 것
+Coloring (색상),색상 스타일 태그,sepia,세피아 톤으로 처리하여 오래된 사진 같은 느낌을 줍니다.,네거티브 프리셋에도 들어 있음: 의도해 쓸 땐 부정 프롬프트에서 뺄 것
 Coloring (색상),단일 색상 테마 태그,aqua theme,아쿠아(물색) 색조가 중심이 됩니다.,
 Coloring (색상),단일 색상 테마 태그,black theme,검은색이 중심이 됩니다.,
 Coloring (색상),단일 색상 테마 태그,blue theme,파란색이 중심이 됩니다.,
@@ -74,16 +74,16 @@ Coloring (색상),단일 색상 테마 태그,yellow theme,노란색이 중심�
 Special effects (특수 효과),,backlighting,피사체의 뒤에서 빛이 비치는 역광 효과를 줍니다.,
 Special effects (특수 효과),,bloom,빛이 밝게 번지는 효과를 줍니다.,
 Special effects (특수 효과),,bokeh,카메라 렌즈의 초점이 맞지 않아 배경이 흐려지며 빛망울이 생기는 효과입니다.,
-Special effects (특수 효과),,chromatic aberration,"색수차 현상으로, 이미지 경계선에 무지갯빛이 갈라져 보이는 효과입니다.",네거티브 프리셋에도 들어 있음 — 의도해 쓸 땐 부정 프롬프트에서 뺄 것
+Special effects (특수 효과),,chromatic aberration,"색수차 현상으로, 이미지 경계선에 무지갯빛이 갈라져 보이는 효과입니다.",네거티브 프리셋에도 들어 있음: 의도해 쓸 땐 부정 프롬프트에서 뺄 것
 Special effects (특수 효과),,depth of field,특정 대상에만 초점을 맞추고 나머지 배경은 흐리게 만드는 효과입니다.,
 Special effects (특수 효과),,diffraction spikes,밝은 광원에서 빛이 십자나 별 모양으로 갈라져 보이는 회절 효과입니다.,
-Special effects (특수 효과),,dithering,"제한된 색상으로 음영을 표현하기 위해 점을 찍는 기법으로, 주로 픽셀 아트에 사용됩니다.",네거티브 프리셋에도 들어 있음 — 의도해 쓸 땐 부정 프롬프트에서 뺄 것
+Special effects (특수 효과),,dithering,"제한된 색상으로 음영을 표현하기 위해 점을 찍는 기법으로, 주로 픽셀 아트에 사용됩니다.",네거티브 프리셋에도 들어 있음: 의도해 쓸 땐 부정 프롬프트에서 뺄 것
 Special effects (특수 효과),,drop shadow,피사체 뒤에 그림자를 추가하여 입체감을 줍니다.,
 Special effects (특수 효과),,emphasis lines,만화에서 속도감이나 집중을 표현하는 선(집중선)을 추가합니다.,
 Special effects (특수 효과),,speed lines,만화에서 속도감이나 집중을 표현하는 선(집중선)을 추가합니다.,
 Special effects (특수 효과),,motion lines,만화에서 속도감이나 집중을 표현하는 선(집중선)을 추가합니다.,
 Special effects (특수 효과),,glitch,화면이 깨지거나 오류가 난 듯한 디지털 노이즈 효과를 줍니다.,
-Special effects (특수 효과),,halftone,신문 인쇄처럼 이미지를 작은 점들의 패턴으로 표현하는 기법입니다.,네거티브 프리셋에도 들어 있음 — 의도해 쓸 땐 부정 프롬프트에서 뺄 것
+Special effects (특수 효과),,halftone,신문 인쇄처럼 이미지를 작은 점들의 패턴으로 표현하는 기법입니다.,네거티브 프리셋에도 들어 있음: 의도해 쓸 땐 부정 프롬프트에서 뺄 것
 Special effects (특수 효과),,lens flare,밝은 빛을 카메라로 직접 찍을 때 렌즈에 빛이 반사되어 생기는 효과입니다.,
 Special effects (특수 효과),,motion blur,움직이는 피사체나 카메라의 움직임으로 인해 이미지가 흐려 보이는 효과입니다.,
 Special effects (특수 효과),,soft focus,전체적으로 초점을 부드럽고 흐릿하게 처리하여 몽환적인 느낌을 줍니다.,

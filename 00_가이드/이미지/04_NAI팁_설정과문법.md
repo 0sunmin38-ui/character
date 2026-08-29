@@ -1,5 +1,5 @@
-> `[정리]` **원문에서 뽑아 재구성 — 값·문구는 원문 것** · 근거: 디시 AI채팅 갤러리 #206486 (원문 전재 아님 · 설정값·문법만 추림)
-# AI 그림의 거의 모든 것 1.1 (V4.5 Full) — 참고 정리
+> `[정리]` **원문에서 뽑아 재구성: 값·문구는 원문 것** · 근거: 디시 AI채팅 갤러리 #206486 (원문 전재 아님 · 설정값·문법만 추림)
+# AI 그림의 거의 모든 것 1.1 (V4.5 Full): 참고 정리
 
 > 원문: https://gall.dcinside.com/mgallery/board/view/?id=aichatting&no=206486
 > NAI V4.5 Full 기준 장문 정보글. `00_가이드/이미지/02-2`가 퀄리티 프롬프트 출처로 인용.
@@ -14,10 +14,10 @@
 |---|---|---|
 | Steps | 28 | 높을수록 선명, 과하면 색이 진해짐 |
 | Prompt Guidance (CPG) | 5~7 | 프롬프트 반영 강도 |
-| Seed | — | 고정 후 프롬프트만 바꾸면 구도 유지한 바리에이션 |
+| Seed | - | 고정 후 프롬프트만 바꾸면 구도 유지한 바리에이션 |
 | Variety+ | 선택 | 초기 개입을 늦춰 자세·구도 다양화 |
 
-**CPG 조절 기준 — 출처별 척도가 다르다. 둘 다 참고값으로만 본다.**
+**CPG 조절 기준: 출처별 척도가 다르다. 둘 다 참고값으로만 본다.**
 
 | | 낮음 | 중간 | 높음 |
 |---|---|---|---|
@@ -38,14 +38,14 @@
 
 | 문법 | 형식 | 예시 |
 |---|---|---|
-| 가중치 | `숫자::태그::` | `1.2::hat::` — 모자 1.2배 강조 |
-| 음수 가중치 (제거) | `-숫자::태그::` | `-1::hat::` — 모자만 제거 |
-| 음수 가중치 (반전) | `-숫자::태그::` | `-1::monochrome::` — 흑백의 반대, 색감 부여 |
+| 가중치 | `숫자::태그::` | `1.2::hat::`: 모자 1.2배 강조 |
+| 음수 가중치 (제거) | `-숫자::태그::` | `-1::hat::`: 모자만 제거 |
+| 음수 가중치 (반전) | `-숫자::태그::` | `-1::monochrome::`: 흑백의 반대, 색감 부여 |
 
 - **주의:** 태그 끝이 숫자면 한 칸 띄어야 함 → `1.2::1girl ::`
 - 음수 가중치는 네거티브 프롬프트와 다른 기능. 특정 요소만 핀셋으로 뺄 때 사용
 
-> **이어서 볼 것** — 음수 가중치의 활용 예시(`-1.5::simple background::` 등)와
+> **이어서 볼 것**: 음수 가중치의 활용 예시(`-1.5::simple background::` 등)와
 > 다중 인물 `Add Character`·액션 태그(`source#`/`target#`/`mutual#`)는
 > `00_가이드/이미지/05_NAI팁_프롬프팅과기능.md` §2·§6 에 자세히 있다. 여기서는 문법만 다룬다.
 
@@ -54,7 +54,7 @@
 ## 3. 태그 배치 순서
 
 > **정본은 `02_템플릿/이미지/01_기본출력_구조_템플릿.md` 의 26슬롯이다.**
-> 아래와 `00_가이드/이미지/05_NAI팁_프롬프팅과기능.md` §2 의 권장 순서는 서로 다르다 — 참고값으로만 본다.
+> 아래와 `00_가이드/이미지/05_NAI팁_프롬프팅과기능.md` §2 의 권장 순서는 서로 다르다. 참고값으로만 본다.
 
 ```
 NAI   : [Frame] → [Creator] → [Setting] → [Style]
@@ -112,16 +112,16 @@ NAI   : [Frame] → [Creator] → [Setting] → [Style]
 여기는 그 조합을 손볼 때 참고하는 **갈래별 어휘**만 남긴다.
 
 **퀄리티**
-- 기본 품질 — `masterpiece, best quality, amazing quality, very aesthetic, best illustration, novel illustration`
-- 해상도·디테일 — `highres, absurdres, incredibly absurdres, ultra-detailed, intricate details`
-- 스타일 제어 — `solo artist`, `artist collaboration` (음수 가중치나 네거티브로 활용)
+- 기본 품질: `masterpiece, best quality, amazing quality, very aesthetic, best illustration, novel illustration`
+- 해상도·디테일: `highres, absurdres, incredibly absurdres, ultra-detailed, intricate details`
+- 스타일 제어: `solo artist`, `artist collaboration` (음수 가중치나 네거티브로 활용)
 
 **네거티브**
-- 품질 저하 — `worst quality, bad quality, low quality, lowres, blurry, jpeg artifacts, scan artifacts, dithering, halftone, screentones, film grain, chromatic aberration`
-- 불필요 요소 — `text, logo, watermark, signature, artist name, blank page`
-- 신체·구도 오류 — `bad anatomy, mutation, deformed, distorted, disfigured, bad hands, extra digits, fewer digits, bad face, mob face, bad eyes, bad proportions, amputee, bad perspective`
+- 품질 저하: `worst quality, bad quality, low quality, lowres, blurry, jpeg artifacts, scan artifacts, dithering, halftone, screentones, film grain, chromatic aberration`
+- 불필요 요소: `text, logo, watermark, signature, artist name, blank page`
+- 신체·구도 오류: `bad anatomy, mutation, deformed, distorted, disfigured, bad hands, extra digits, fewer digits, bad face, mob face, bad eyes, bad proportions, amputee, bad perspective`
 
-> **이어서 볼 것** — 품질/미학/연도/매체 태그의 뜻과 `Add Quality Tags` 토글, 네거티브 프리셋(Light·Heavy),
+> **이어서 볼 것**: 품질/미학/연도/매체 태그의 뜻과 `Add Quality Tags` 토글, 네거티브 프리셋(Light·Heavy),
 > `freckles`를 자연스럽게 만드는 응용 등은 `00_가이드/이미지/05_NAI팁_프롬프팅과기능.md` §2·§3 에 있다.
 > 매체·아트스타일·색상·효과 태그의 개별 뜻은 `01_자료/이미지/1-스타일태그.csv`.
 
@@ -144,7 +144,7 @@ NAI   : [Frame] → [Creator] → [Setting] → [Style]
 | 인물이 너무 크게 나옴 | `far away`, `full body` 추가 후 가중치 상향 |
 | 세로 그림에 배경을 넓게 | `wide angle lens`, `zoom out`, `from below` 강하게 |
 
-**비율별 성향** — 세로(2:3~9:16)는 캐릭터·의상 디테일, 가로(3:2~16:9)는 분위기·배경 연출, 정사각은 무난.
+**비율별 성향**: 세로(2:3~9:16)는 캐릭터·의상 디테일, 가로(3:2~16:9)는 분위기·배경 연출, 정사각은 무난.
 
 ---
 
@@ -152,7 +152,7 @@ NAI   : [Frame] → [Creator] → [Setting] → [Style]
 
 **Character Reference**는 이미지 속 캐릭터의 체형·얼굴·의상 전반을 참조하므로, 단순 배경에 여러 시점이 담긴 턴어라운드 시트를 쓰는 게 좋습니다. 참조 이미지와 태그가 어긋나면(체형·성별 등) 결과가 불안정해지므로 Fidelity·StyleAware로 조정합니다.
 
-> **이어서 볼 것** — Vibe Transfer(Reference Strength · Information Extracted)와
+> **이어서 볼 것**: Vibe Transfer(Reference Strength · Information Extracted)와
 > img2img·Inpaint·Canvas는 `00_가이드/이미지/05_NAI팁_프롬프팅과기능.md` §7 에 있다.
 >
 > 시트를 실제로 뽑는 4단계 프롬프트는 `02_템플릿/이미지/01_기본출력_구조_템플릿.md` 로 옮겼다.
@@ -164,4 +164,4 @@ NAI   : [Frame] → [Creator] → [Setting] → [Style]
 0 그림체란 · 1 기본 설정 · 2 바이브 트랜스퍼/캐릭터 레퍼런스 · 3 작가 태그 ·
 4 드로잉 스타일 · 5 구도/시점 · 6 퀄리티·네거티브 · 7 잡다한 팁 · 8 마치며
 
-원문 7장에는 위에 옮기지 않은 항목이 더 있습니다 — 체형 이론과 남녀 체형 태그, NSFW 등급 제어(`rating` 태그, censored/uncensored), 상호작용 태그, 텍스트 렌더링, 캐릭터 유지(i2i) 등. 필요할 때 원문에서 해당 절을 펼쳐 보세요.
+원문 7장에는 위에 옮기지 않은 항목이 더 있습니다. 체형 이론과 남녀 체형 태그, NSFW 등급 제어(`rating` 태그, censored/uncensored), 상호작용 태그, 텍스트 렌더링, 캐릭터 유지(i2i) 등. 필요할 때 원문에서 해당 절을 펼쳐 보세요.

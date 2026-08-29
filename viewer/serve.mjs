@@ -7,7 +7,7 @@
  *   node viewer/serve.mjs [포트]      # 기본 8799 · 저장소 루트에서 실행
  *
  * 쓰기는 99_작업중/<이미지|챗봇>/ 안의 .md 로만 허용한다.
- * 초안은 만들어진 곳(이미지 조립 / 챗봇 작성)을 따라 갈라 둔다 — 저장소의 다른 폴더와 같은 규칙.
+ * 초안은 만들어진 곳(이미지 조립 / 챗봇 작성)을 따라 갈라 둔다. 저장소의 다른 폴더와 같은 규칙.
  */
 import { createServer } from 'node:http';
 import { readFile, writeFile, readdir, stat, mkdir, unlink } from 'node:fs/promises';
@@ -21,17 +21,17 @@ const SAVE_DIR = '99_작업중';
 const KINDS = { img: '이미지', bot: '챗봇' };   /* 뷰어의 그룹 키 → 폴더명 */
 const IMG_CACHE = resolve(ROOT, 'viewer', '.imgcache');
 /* 작가 태그마다 '이 작가로 뽑으면 이렇게 나온다' 는 견본을 둔다.
-   140개를 글자만 보고 고를 수는 없다 — 그림체는 눈으로 고르는 것이다. */
+   140개를 글자만 보고 고를 수는 없다. 그림체는 눈으로 고르는 것이다. */
 const SAMPLE_DIR = '01_자료/이미지/작가샘플';
 const SAMPLE_MAX = 10 * 1024 * 1024;
 const SAMPLE_EXT = new Set(['.webp','.png','.jpg','.jpeg','.gif','.avif']);
 
 /* 원문 글에 걸린 그림은 남의 CDN 에 있고, 그쪽이 핫링크를 막는다.
-   포스타입 CDN 은 Referer 가 postype.com 이 아니면 403 을 준다 —
+   포스타입 CDN 은 Referer 가 postype.com 이 아니면 403 을 준다.
    브라우저는 <img> 에 가짜 Referer 를 실을 수 없으므로 서버가 대신 받아 온다. */
 const REFERER = { 'd2ufj6gm1gtdrc.cloudfront.net': 'https://www.postype.com/' };
 const IMG_MAX = 20 * 1024 * 1024;
-/* 사설망으로 찔러보는 걸 막는다 — 이건 그림을 받아오는 통로지 범용 프록시가 아니다 */
+/* 사설망으로 찔러보는 걸 막는다. 이건 그림을 받아오는 통로지 범용 프록시가 아니다 */
 const PRIVATE = /^(localhost$|127\.|10\.|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.|\[?::1\]?$|0\.)/i;
 
 const MIME = {
@@ -73,7 +73,7 @@ function safeSavePath(kind, name) {
   return { rel, abs };
 }
 
-/* 고칠 수 있는 파일 — 뷰어에서 손대는 것만 열어 둔다.
+/* 고칠 수 있는 파일: 뷰어에서 손대는 것만 열어 둔다.
    가이드 원문이나 코드는 여기 없다. 실수로도 못 덮어쓰게 하려는 것이다. */
 const WRITABLE = [
   /^99_작업중\/[^/]+\/[^/]+\.md$/,                    /* 파츠·초안 */
@@ -88,7 +88,7 @@ function safeWritePath(path, mustExist = true) {
   if (mustExist && !existsSync(abs)) return { err: '없는 파일입니다' };
   return { rel, abs };
 }
-/* 삭제는 초안만. 사전과 프리셋은 고치기만 한다 — 통째로 날릴 일이 없다. */
+/* 삭제는 초안만. 사전과 프리셋은 고치기만 한다. 통째로 날릴 일이 없다. */
 function safeDeletePath(path) {
   const p = safeWritePath(path);
   if (p.err) return p;
@@ -105,7 +105,7 @@ async function proxyImage(res, raw) {
   if (PRIVATE.test(u.hostname)) return send(res, 403, '사설망 주소는 받지 않습니다');
 
   const key = createHash('sha1').update(u.href).digest('hex');
-  /* 받아 온 형식이 주소의 확장자와 다를 수 있다 — 이 CDN 은 .png 주소에 webp 를 준다.
+  /* 받아 온 형식이 주소의 확장자와 다를 수 있다. 이 CDN 은 .png 주소에 webp 를 준다.
      그래서 캐시 파일 이름은 '실제로 받은 형식' 으로 붙이고, 찾을 때도 형식별로 훑는다. */
   const EXTS = ['.webp', '.avif', '.png', '.jpg', '.gif', '.img'];
   const hit = EXTS.map(e => [e, join(IMG_CACHE, key + e)]).find(([, f]) => existsSync(f));
@@ -118,7 +118,7 @@ async function proxyImage(res, raw) {
   const referer = REFERER[u.hostname] || u.origin + '/';
   let r;
   try {
-    /* accept 를 붙이면 이 CDN 은 webp 로 준다 — 스크린샷 PNG 가 1/5 로 줄어든다 */
+    /* accept 를 붙이면 이 CDN 은 webp 로 준다. 스크린샷 PNG 가 1/5 로 줄어든다 */
     const H = { 'user-agent': 'Mozilla/5.0 luvheil-viewer', accept: 'image/webp,image/avif,image/*,*/*;q=0.8' };
     r = await fetch(u.href, { headers: { ...H, referer } });
     /* CDN 마다 무엇을 보고 막는지 달라서, 한 번 막히면 Referer 없이 다시 시도한다 */
@@ -142,7 +142,7 @@ async function proxyImage(res, raw) {
   res.end(buf);
 }
 
-/* python http.server 와 같은 형태의 디렉터리 목록 — 뷰어가 이걸 파싱한다. */
+/* python http.server 와 같은 형태의 디렉터리 목록: 뷰어가 이걸 파싱한다. */
 async function listing(dir, urlPath) {
   const names = await readdir(dir);
   const rows = [];
@@ -202,7 +202,7 @@ createServer(async (req, res) => {
       return json(res, 200, { ok: true, path: p.rel });
     }
 
-    /* ── 수정 — 이미 있는 초안의 내용만 바꾼다 ────── */
+    /* ── 수정: 이미 있는 초안의 내용만 바꾼다 ────── */
     if (req.method === 'POST' && req.url === '/_edit') {
       const body = await readBody(req, res); if (!body) return;
       const p = safeWritePath(body.path);

@@ -1,0 +1,45 @@
+/* 문서 보기 화면 스타일. 지금은 셸에 걸지 않는다. */
+
+/* 좌측 서랍: 폭에 상관없이 겹쳐 뜬다 */
+#side{position:fixed;top:0;bottom:0;left:0;z-index:50;width:min(84vw,300px);
+  transform:translateX(-101%);transition:transform .22s ease;
+  box-shadow:0 0 34px rgba(11,20,32,.28);padding-bottom:env(safe-area-inset-bottom)}
+#side.open{transform:none}
+/* 테두리 없는 아이콘 버튼: 햄버거 · 닫기처럼 글자가 필요 없는 것들 */
+button.iconbtn{display:inline-flex;align-items:center;justify-content:center;
+  border:none;background:none;color:var(--dim);cursor:pointer;
+  width:26px;height:26px;border-radius:var(--r);font-size:17px;line-height:1;flex:none;transition:.12s}
+button.iconbtn:hover{color:var(--accent);background:var(--accent-w)}
+button.iconbtn.x:hover{color:var(--bad);background:transparent}
+/* 사이드바 */
+.grp{padding:9px 13px 3px;font-size:10.5px;font-weight:700;color:var(--faint);letter-spacing:.08em;
+  cursor:pointer;user-select:none;display:flex;align-items:center;gap:5px;text-transform:uppercase}
+.grp:hover{color:var(--accent)}
+.grp .ar{display:inline-block;transition:transform .15s;font-size:8px}
+.grp.fold .ar{transform:rotate(-90deg)}
+.grp .n{margin-left:auto;font-weight:400;opacity:.7;letter-spacing:0}
+.f{display:flex;align-items:center;gap:7px;padding:3px 13px;cursor:pointer;font-size:13px;
+  border-left:2px solid transparent;color:var(--ink2)}
+.f:hover{background:var(--sunken)}
+.f.on{background:var(--accent-w);border-left-color:var(--accent);color:var(--accent);font-weight:600}
+.f span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dot{width:6px;height:6px;border-radius:50%;flex:none}
+.dot.원문{background:var(--ok)} .dot.정리{background:var(--accent)}
+.dot.작업{background:var(--warn)} .dot.도구{background:var(--faint)} .dot.csv{background:var(--faint)}
+.sidefoot{padding:10px 13px 16px;border-top:1px solid var(--line2);margin-top:8px}
+.sidefoot label{display:flex;gap:7px;align-items:center;font-size:11.5px;color:var(--dim);cursor:pointer}
+
+/* ── 문서 보기 ─ 작업 화면을 덮고, 닫으면 하던 자리로 ── */
+#docpage{position:fixed;inset:0;z-index:60;background:var(--bg);display:flex;flex-direction:column}
+#docpage[hidden]{display:none}
+.docbar{display:flex;gap:9px;align-items:center;padding:0 20px;height:46px;flex:none;
+  background:var(--panel);border-bottom:1px solid var(--line)}
+.docbar strong{font-size:14.5px;letter-spacing:-.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.docbody{flex:1;overflow:auto;padding:24px 26px 90px}
+.docbody .md{max-width:78ch;margin:0 auto}
+body.reading{overflow:hidden}
+@media (max-width:700px){
+  .docbar{padding:0 12px;height:48px}
+  .docbody{padding:16px 13px 80px}
+}
+

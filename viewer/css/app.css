@@ -1,0 +1,448 @@
+/* ═══ 디자인 토큰: AIchatCollector 와 같은 체계 ═══════════════
+   두 도구를 오갈 때 색·간격·컨트롤이 같아야 손이 헷갈리지 않는다.  */
+:root{
+  --bg:#f5f8fc; --panel:#fff; --sunken:#eef3fa;
+  --ink:#152232; --ink2:#3d5068; --dim:#7488a0; --faint:#9aabc0;
+  --line:#dde6f1; --line2:#eaf0f7;
+  --accent:#2166cf; --accent-h:#1a55b0; --accent-w:#e7f0fd; --accent-b:#b9d3f7;
+  --chip:#eef3fa; --hi:#ffeeb0; --ok:#1d7f5e; --warn:#b3781a; --bad:#c0413c;
+  --ctl:24px; --r:6px; --r-sm:5px;   /* r=입력·버튼 / r-sm=칩·세그먼트 */
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#0e141d; --panel:#161e2a; --sunken:#111925;
+  --ink:#e8eff8; --ink2:#c2d0e2; --dim:#8497ae; --faint:#6b7e96;
+  --line:#243244; --line2:#1c2735;
+  --accent:#5b9df5; --accent-h:#7ab0f8; --accent-w:#16283f; --accent-b:#2f4d73;
+  --chip:#1c2735; --hi:#5a4a12; --ok:#5fc79b; --warn:#dfb457; --bad:#e2726c;
+}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:14px/1.6 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",Pretendard,"Segoe UI",sans-serif;
+  -webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:var(--accent)}
+img,video{max-width:100%}
+
+/* ── 컨트롤 공통 ─────────────────────────────────────────── */
+.ctl{height:var(--ctl);border:1px solid var(--line);background:var(--panel);color:var(--ink2);
+  border-radius:var(--r);padding:0 9px;font-size:12.5px;line-height:1;vertical-align:middle}
+button.ctl{cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;transition:.12s}
+/* display 를 지정한 클래스는 hidden 속성을 이긴다. 그래서 담은 태그 버튼이
+   캐릭터 탭에서도 계속 보였다. 여기서 못 박아 둔다. */
+[hidden]{display:none !important}
+button.ctl:hover{border-color:var(--accent-b);background:var(--accent-w);color:var(--accent)}
+button.ctl.on,button.ctl.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button.ctl.primary:hover{background:var(--accent-h);border-color:var(--accent-h);color:#fff}
+button.ctl.danger{color:var(--bad)}
+button.ctl.danger:hover{border-color:var(--bad);background:transparent;color:var(--bad)}
+button.ctl:disabled{opacity:.55;cursor:default}
+.ctl.i{width:var(--ctl);min-width:var(--ctl);padding:0;justify-content:center;font-size:13px}
+input.ctl,select.ctl{background:var(--sunken)}
+input.ctl:focus,textarea:focus{outline:none;border-color:var(--accent);background:var(--panel);
+  box-shadow:0 0 0 3px var(--accent-w)}
+select.ctl{cursor:pointer;padding-right:23px;-webkit-appearance:none;appearance:none;
+  background-image:linear-gradient(45deg,transparent 50%,var(--dim) 50%),linear-gradient(135deg,var(--dim) 50%,transparent 50%);
+  background-position:calc(100% - 13px) calc(50% + 1px),calc(100% - 9px) calc(50% + 1px);
+  background-size:4px 4px;background-repeat:no-repeat}
+select.ctl:hover{border-color:var(--accent-b)}
+/* 폭이 부족하면 글자를 이모지로 대체한다: .t 는 글자, .e 는 이모지 */
+.e{display:none} .t{display:inline}
+.count{font-size:12px;color:var(--dim);font-variant-numeric:tabular-nums;margin-left:auto;white-space:nowrap}
+.muted{color:var(--dim)}
+
+/* ── 레이아웃 ────────────────────────────────────────────── */
+/* 문서는 별도 페이지가 됐으므로 좌측은 상시 칼럼이 아니라 서랍이다.
+   작업 화면(에셋·캐릭터)은 가로를 다 쓴다. */
+#app{display:grid;grid-template-columns:1fr 5px var(--cw,300px);
+  grid-template-rows:auto 1fr;height:100dvh}
+.rz{background:var(--line2);cursor:col-resize;transition:background .12s}
+.rz:hover,.rz.drag{background:var(--accent)}
+body.resizing{cursor:col-resize;user-select:none}
+#app.noc{grid-template-columns:1fr 5px 0}
+/* 캐릭터 화면에는 담은 태그 칸 자체가 없다 */
+#app.solo{grid-template-columns:1fr}
+#app.noc #cart{overflow:hidden;border:none}
+#rzL{display:none}
+/* 담은 태그는 에셋에서만 쓴다. 다른 데선 리사이저도 죽인다 */
+#app:not([data-g=img]) #rzR{pointer-events:none;opacity:0}
+/* ── 헤더 (GNB) ──────────────────────────────────────────── */
+.hdr{grid-column:1/-1;background:var(--panel);border-bottom:1px solid var(--line);
+  box-shadow:0 1px 3px rgba(21,34,50,.04);z-index:30}
+.hdr-top{display:flex;align-items:center;gap:18px;padding:0 20px;height:52px}
+.brand{display:flex;flex-direction:column;min-width:0;gap:2px}
+.brand b{font-size:15.5px;letter-spacing:-.015em;line-height:1.25;color:var(--ink)}
+.brand span{font-size:11.5px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:44ch}
+.nav{display:flex;gap:4px;align-self:stretch;align-items:stretch;margin-left:8px}
+.nav a{padding:0 17px;display:flex;align-items:center;gap:6px;font-size:13.5px;color:var(--dim);
+  text-decoration:none;border-bottom:2px solid transparent;transition:.12s}
+.nav a:hover{color:var(--accent);background:var(--accent-w)}
+.nav a.active{color:var(--accent);font-weight:600;border-bottom-color:var(--accent)}
+/* 글씨 ↔ 이모지는 창 크기가 아니라 헤더의 실제 좌우 너비로 정한다.
+   사이드바를 넓히면 창은 그대로여도 헤더가 좁아지므로 미디어 쿼리로는 못 잡는다. */
+.nav a .ico{display:none}
+.hdr[data-w=md] .brand span{display:none}
+.hdr[data-w=sm] .brand{display:none}
+.hdr[data-w=sm] .nav a .txt{display:none}
+.hdr[data-w=sm] .nav a .ico{display:inline;font-size:17px}
+.hdr[data-w=sm] .nav a{padding:0 12px}
+.hdr-actions{margin-left:auto;display:flex;gap:8px;flex:none;align-items:center;min-height:var(--ctl)}
+.hdr-tools{border-top:1px solid var(--line2)}
+.hdr-row{display:flex;gap:9px;align-items:center;padding:7px 20px;min-height:calc(var(--ctl) + 14px)}
+/* 같은 줄에 서는 것은 전부 --ctl 높이로 맞춘다.
+   세그먼트는 테두리 1px 이 있으니 안쪽 버튼은 그만큼 뺀다. */
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:var(--r-sm);overflow:hidden;
+  background:var(--panel);flex:0 1 auto;min-width:0;height:var(--ctl)}
+.seg button{border:none;background:none;color:var(--dim);font-size:12px;
+  padding:0 12px;height:calc(var(--ctl) - 2px);cursor:pointer;border-right:1px solid var(--line);
+  white-space:nowrap;transition:.12s}
+.seg button:last-child{border-right:none}
+.seg button:hover{background:var(--accent-w);color:var(--accent)}
+.seg button.on{background:var(--accent);color:#fff}
+.segwrap{min-width:0;display:flex;align-items:center}
+/* 화면 안쪽 두 번째 줄 탭: 헤더의 것보다 한 단 작게 둬서 층이 보이게 한다 */
+.seg2 button{font-size:11.5px;padding:0 11px}
+
+/* 작가 견본 표: 그림체는 눈으로 고른다 */
+td.samp{width:170px;padding:5px 8px;vertical-align:middle}
+td.samp img{display:block;width:100%;max-width:158px;height:auto;max-height:190px;object-fit:cover;
+  border:1px solid var(--line);border-radius:var(--r-sm);background:var(--sunken);cursor:zoom-in}
+td.samp img:hover{border-color:var(--accent-b)}
+td.samp .drop{display:flex;flex-direction:column;justify-content:center;align-items:center;gap:3px;
+  min-height:76px;border:1px dashed var(--line);border-radius:var(--r-sm);background:var(--sunken);
+  font-family:var(--mono);font-size:10.5px;color:var(--faint);text-align:center;padding:6px;line-height:1.5}
+td.samp.over .drop,td.samp.over img{border-color:var(--accent);background:var(--accent-w);border-style:solid}
+#main[data-w=sm] td.samp{width:104px}
+#main[data-w=sm] td.samp img{max-width:92px}
+
+/* ── 패널 ────────────────────────────────────────────────── */
+#cart{background:var(--panel);overflow:auto;overscroll-behavior:contain}
+#cart{border-left:1px solid var(--line);display:flex;flex-direction:column}
+main{overflow:auto;padding:15px 22px 70px}
+#scrim{display:none;position:fixed;inset:0;background:rgba(11,20,32,.42);z-index:40}
+#scrim.on{display:block}
+
+/* ── 표 열 너비 직접 조절 ──────────────────────
+   사전은 사람마다 보고 싶은 칸이 다르다. 경계선을 끌어 넓힌다. */
+table.grid{table-layout:fixed}
+table.grid th{position:relative;user-select:none}
+/* 열 경계가 안 보이면 어디까지가 그 열인지 알 수 없다. 세로선을 넣는다 */
+table.grid th,table.grid td{border-right:1px solid var(--line2);overflow:hidden;text-overflow:ellipsis}
+table.grid th{border-right-color:var(--line)}
+table.grid th:last-child,table.grid td:last-child{border-right:none}
+table.grid th .cgrip{position:absolute;top:0;right:-3px;width:7px;height:100%;cursor:col-resize;z-index:2}
+table.grid th .cgrip:hover::after,table.grid th .cgrip.drag::after{
+  content:'';position:absolute;left:2px;top:0;bottom:0;width:2px;background:var(--accent)}
+table.grid td.wrap{white-space:normal}
+
+.badge{display:inline-block;padding:1px 8px;border-radius:var(--r-sm);font-size:11px;font-weight:700;
+  border:1px solid currentColor}
+.badge.원문{color:var(--ok)} .badge.정리{color:var(--accent)}
+.badge.작업{color:var(--warn)} .badge.도구{color:var(--dim)}
+
+/* ── 바 · 버튼 줄 ────────────────────────────────────────── */
+.bar{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-bottom:10px;min-height:var(--ctl)}
+/* 체크박스 딸린 라벨·제목도 같은 높이로 세워야 줄이 흔들리지 않는다 */
+.bar>label,.bar>strong,.bar>span:not(.sp){display:inline-flex;align-items:center;height:var(--ctl)}
+.bar>label{gap:5px}
+.bar .sp{flex:1}
+.bar input[type=search]{min-width:200px}
+.btn{height:var(--ctl);border:1px solid var(--line);background:var(--panel);color:var(--ink2);
+  border-radius:var(--r);padding:0 9px;font-size:12.5px;cursor:pointer;transition:.12s;
+  display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.btn:hover{border-color:var(--accent-b);background:var(--accent-w);color:var(--accent)}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+.btn.pri:hover{background:var(--accent-h);border-color:var(--accent-h);color:#fff}
+.btn.danger{color:var(--bad)}
+.btn.danger:hover{border-color:var(--bad);background:transparent}
+/* 글자 없이 기호만 쓰는 버튼: 정사각으로 맞춰 줄이 뚱뚱해지지 않게 한다 */
+.btn.i{width:var(--ctl);min-width:var(--ctl);padding:0;justify-content:center;font-size:13px}
+h3{font-size:13.5px;margin:16px 0 6px;color:var(--ink)}
+
+/* ── 표 ──────────────────────────────────────────────────── */
+table{border-collapse:collapse;width:100%;font-size:12.5px}
+th,td{border-bottom:1px solid var(--line2);padding:3px 8px;text-align:left;vertical-align:top}
+th{position:sticky;top:0;background:var(--panel);z-index:1;font-size:10.5px;color:var(--faint);
+  letter-spacing:.04em;text-transform:uppercase;border-bottom-color:var(--line)}
+/* 목적·분류 칸이 두 줄로 넘어가면 표가 들쭉날쭉해진다. 한 줄로 눌러 둔다. */
+td.meta,th.meta{font-size:11.5px;white-space:nowrap}
+code,.tag{font-size:12px}
+tbody tr:hover{background:var(--sunken)}
+code,.tag{font-family:var(--mono);font-size:12.5px}
+.tag{cursor:pointer;padding:1px 8px;border-radius:var(--r-sm);background:var(--accent-w);
+  border:1px solid var(--accent-b);color:var(--accent);line-height:1.6;display:inline-block}
+.tag:hover{background:var(--accent);color:#fff}
+.nsfw{color:var(--bad);font-weight:700;font-size:11px}
+/* 본문 표: 좁으면 부가 컬럼부터 접는다 */
+#main[data-w=md] .opt,#main[data-w=sm] .opt{display:none}
+#main[data-w=sm] .opt2{display:none}
+
+/* ── 담은 태그 ───────────────────────────────────────────── */
+#cart .head{padding:9px 12px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:7px}
+#cart .list{flex:1;overflow:auto}
+.ci{padding:5px 12px;border-bottom:1px solid var(--line2);display:flex;gap:7px;align-items:center}
+.ci select{flex:none;width:92px;padding:0 5px;border:1px solid var(--line);border-radius:var(--r-sm);
+  background:var(--sunken);font-size:11px;height:22px}
+.ci .t{flex:1;font-family:var(--mono);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ci .x{cursor:pointer;color:var(--faint);border:none;background:none;padding:0 3px;font-size:13px}
+.ci .x:hover{color:var(--bad)}
+#cart .head .ttl-md,#cart .head .ttl-sm{display:none}
+#cart[data-w=md] .head .ttl-lg{display:none} #cart[data-w=md] .head .ttl-md{display:inline}
+#cart[data-w=sm] .head .ttl-lg{display:none} #cart[data-w=sm] .head .ttl-sm{display:inline}
+#cart[data-w=sm] .head{padding:11px 7px;justify-content:center}
+#cart[data-w=md] .ci select{width:62px}
+#cart[data-w=sm] .ci{padding:6px 7px;gap:5px}
+#cart[data-w=sm] .ci select{display:none}
+
+/* ── 마크다운 ────────────────────────────────────────────── */
+.md{max-width:78ch}
+.md h1{font-size:23px;margin:0 0 6px;letter-spacing:-.02em}
+.md h2{font-size:18px;margin:28px 0 9px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+.md h3{font-size:15px;margin:22px 0 7px}
+.md h4{font-size:14.5px;margin:18px 0 5px}
+.md h5{font-size:13.5px;margin:16px 0 5px}
+.md h6{font-size:13px;margin:14px 0 4px;color:var(--ink2)}
+.md del{color:var(--faint)}
+.md p{margin:9px 0;color:var(--ink2)}
+.md blockquote{margin:11px 0;padding:9px 14px;border-left:3px solid var(--accent-b);
+  background:var(--sunken);border-radius:0 var(--r) var(--r) 0;color:var(--dim)}
+.md blockquote strong{color:var(--ink2)}
+.md blockquote p{margin:4px 0}
+.md table{margin:11px 0}
+.md ul,.md ol{padding-left:21px;margin:9px 0;color:var(--ink2)}
+.md li{margin:3px 0}
+.md hr{border:none;border-top:1px solid var(--line);margin:22px 0}
+.md code{background:var(--sunken);border:1px solid var(--line2);padding:1px 5px;border-radius:var(--r-sm)}
+.md pre code{background:none;border:none;padding:0}
+/* 이미지: 원문 글의 스크린샷. 눌러서 원본을 연다 */
+.md figure{margin:14px 0}
+.md .imglink{display:block;line-height:0}
+.md .imglink img{border:1px solid var(--line);border-radius:var(--r);background:var(--sunken);
+  max-height:640px;object-fit:contain}
+.md .imglink:hover img{border-color:var(--accent-b)}
+.md .imglink.dead{line-height:1.5}
+.md .imgdead{display:inline-block;padding:9px 13px;border:1px dashed var(--line);
+  border-radius:var(--r);background:var(--sunken);color:var(--dim);font-size:12.5px}
+.md .imglink.dead:hover .imgdead{border-color:var(--accent-b);color:var(--accent)}
+.md figcaption{font-size:11.5px;color:var(--faint);line-height:1.5;margin-top:5px}
+/* 링크 카드: 포스타입 글이 쓰는 여러 줄 링크(`[` … `](url)`) */
+.md .linkcard{display:block;text-decoration:none;border:1px solid var(--line);border-radius:var(--r);
+  background:var(--panel);padding:11px 14px;margin:10px 0;transition:.12s}
+.md .linkcard:hover{border-color:var(--accent-b);background:var(--accent-w)}
+.md .linkcard b{display:block;font-size:13.5px;color:var(--ink);line-height:1.45}
+.md .linkcard span{display:block;font-size:12px;color:var(--dim);margin-top:3px;line-height:1.5}
+.md .linkcard em{display:block;font-style:normal;font-size:11px;color:var(--faint);margin-top:5px;
+  font-family:var(--mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.md a{overflow-wrap:anywhere}
+
+pre{background:var(--sunken);border:1px solid var(--line);border-radius:var(--r);padding:10px 11px;
+  overflow:auto;font-family:var(--mono);font-size:12.5px;line-height:1.65;white-space:pre-wrap;word-break:break-word}
+.md pre{position:relative}
+.md pre .cp{position:absolute;top:7px;right:7px;padding:2px 10px;font-size:11px;
+  border:1px solid var(--line);border-radius:var(--r-sm);background:var(--panel);color:var(--dim);
+  cursor:pointer;opacity:0;transition:.15s}
+.md pre:hover .cp,.md pre .cp:focus{opacity:1}
+.md pre .cp:hover{color:var(--accent);border-color:var(--accent-b)}
+textarea{width:100%;min-height:110px;padding:9px;border:1px solid var(--line);border-radius:var(--r);
+  background:var(--panel);font-family:var(--mono);font-size:12.5px;resize:vertical;line-height:1.65}
+/* 조립 결과: 읽기만 하는 자리가 아니라 손대는 자리다 */
+textarea.pbox{min-height:82px;background:var(--sunken);margin-bottom:2px}
+textarea.pbox:focus{background:var(--panel)}
+
+/* ── 챗봇 작성 ───────────────────────────────────────────── */
+.blk{margin:0 0 9px}
+.blk label{display:flex;align-items:baseline;gap:7px;font-weight:700;font-size:12.5px;margin-bottom:3px}
+.blk .hint{font-weight:400;color:var(--dim);font-size:11.5px}
+.blk .bc{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--faint);font-weight:400}
+.blk .bc.z{opacity:.4}
+.blk textarea{min-height:50px}
+.sum{display:flex;gap:16px;flex-wrap:wrap;align-items:center;padding:8px 13px;margin-bottom:11px;
+  border:1px solid var(--line);border-radius:var(--r);background:var(--panel);position:sticky;top:0;z-index:2}
+.sum b{font-family:var(--mono);font-size:17px;font-weight:700;letter-spacing:-.03em}
+.sum .u{font-size:11px;color:var(--dim);margin-left:2px}
+.sum .it{display:flex;flex-direction:column;gap:1px}
+.sum .k{font-size:10.5px;color:var(--faint);letter-spacing:.05em;text-transform:uppercase}
+.sum input{width:80px;height:var(--ctl);padding:0 7px;border:1px solid var(--line);border-radius:var(--r-sm);
+  background:var(--sunken);font-family:var(--mono);font-size:12px}
+.gauge{flex:1;min-width:110px;height:7px;border-radius:99px;background:var(--line);overflow:hidden}
+.gauge i{display:block;height:100%;background:var(--ok);transition:width .15s}
+.gauge i.warn{background:var(--warn)} .gauge i.over{background:var(--bad)}
+.over-t{color:var(--bad);font-weight:700}
+.cnt{font-family:var(--mono);font-size:12px;color:var(--dim)}
+
+/* ── 판정 결과 ───────────────────────────────────────────── */
+.res{margin:6px 0;padding:8px 12px;border:1px solid var(--line);border-radius:var(--r);background:var(--panel)}
+.res.ok{border-left:3px solid var(--ok)} .res.no{border-left:3px solid var(--bad)}
+.res strong{color:var(--ink)}
+.slot{display:grid;grid-template-columns:34px 116px 1fr;gap:9px;padding:2px 0;
+  border-bottom:1px solid var(--line2);align-items:baseline}
+.slot .n{font-family:var(--mono);color:var(--faint);font-size:12px}
+.slot .v{font-family:var(--mono);font-size:12.5px;color:var(--ink2);overflow-wrap:anywhere}
+.slot.empty{opacity:.35}
+
+/* ── 작업중 (초안) ───────────────────────────────────────── */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;
+  padding:7px 12px;margin-bottom:5px;transition:.12s}
+.card:hover{border-color:var(--accent-b)}
+.card .row{display:flex;gap:9px;align-items:center;flex-wrap:nowrap}
+.card .nm{font-weight:600;font-size:13.5px;color:var(--ink);flex:1 1 0;min-width:0;cursor:pointer;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card .nm:hover{color:var(--accent)}
+.card .meta{font-size:11.5px;color:var(--faint);white-space:nowrap;font-variant-numeric:tabular-nums;flex:none}
+.kindbadge{flex:none;font-size:11px;padding:1px 8px;border-radius:var(--r-sm);
+  background:var(--chip);color:var(--dim);white-space:nowrap}
+/* 파츠 안의 태그 사전: 짜는 자리를 떠나지 않고 고른다 */
+.pick-wrap{border:1px solid var(--line);border-radius:var(--r);background:var(--panel);
+  padding:8px 11px;margin:0 0 11px}
+.pick-wrap summary{cursor:pointer;font-size:13px;font-weight:600;list-style:none;
+  display:flex;align-items:center;gap:8px}
+.pick-wrap summary::-webkit-details-marker{display:none}
+.pick-wrap summary::before{content:'▸';color:var(--faint);transition:transform .15s;display:inline-block}
+.pick-wrap[open] summary::before{transform:rotate(90deg)}
+.pick-wrap summary .muted{font-weight:400;font-size:11.5px}
+.pick-wrap .bar{margin-bottom:8px}
+/* 한 줄 고치기 폼 */
+.rowform{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;padding:10px;margin:0 0 10px;
+  border:1px solid var(--accent-b);border-radius:var(--r);background:var(--accent-w)}
+.rf{display:flex;flex-direction:column;gap:3px;flex:1 1 130px;min-width:0}
+.rf>span{font-size:10.5px;color:var(--dim);letter-spacing:.04em;text-transform:uppercase}
+.rf textarea{min-height:62px}
+.rfbar{display:flex;gap:7px;flex:1 1 100%;margin-top:2px}
+/* 볼 열 고르기 */
+.colmenu{position:relative;flex:none}
+.colmenu summary{list-style:none;cursor:pointer;height:var(--ctl);display:inline-flex;align-items:center;
+  justify-content:center;min-width:var(--ctl);padding:0 7px;font-size:13px;border:1px solid var(--line);border-radius:var(--r);background:var(--panel);
+  color:var(--ink2);font-size:13px;white-space:nowrap;transition:.12s}
+.colmenu summary::-webkit-details-marker{display:none}
+.colmenu summary:hover{border-color:var(--accent-b);background:var(--accent-w);color:var(--accent)}
+.colmenu[open] summary{border-color:var(--accent);color:var(--accent)}
+.colmenu-body{position:absolute;top:calc(100% + 5px);right:0;z-index:20}
+/* 버튼 메뉴와 머리글 팝오버가 같은 옷을 입는다 */
+.colmenu-body,.colpop{min-width:176px;background:var(--panel);border:1px solid var(--line);
+  border-radius:var(--r);padding:7px;box-shadow:0 8px 26px rgba(21,34,50,.18);
+  display:flex;flex-direction:column;gap:1px}
+.colpop{position:fixed;z-index:80}
+.colmenu-body label,.colpop label{display:flex;gap:8px;align-items:center;font-size:12.5px;
+  color:var(--ink2);cursor:pointer;white-space:nowrap;padding:3px 7px;border-radius:var(--r-sm)}
+.colmenu-body label:hover,.colpop label:hover{background:var(--sunken)}
+.colitem{text-align:left;border:none;background:none;color:var(--ink2);font:inherit;font-size:12.5px;
+  padding:4px 7px;border-radius:var(--r-sm);cursor:pointer;white-space:nowrap}
+.colitem:hover{background:var(--accent-w);color:var(--accent)}
+.colmenu .sep,.colpop .sep{display:block;height:1px;background:var(--line2);margin:4px 2px}
+button.mini{height:22px;min-width:22px;padding:0 6px;font-size:12.5px;border-radius:var(--r-sm);
+  border:1px solid var(--line);background:var(--panel);color:var(--dim);cursor:pointer;white-space:nowrap}
+button.mini:hover{border-color:var(--accent-b);color:var(--accent)}
+.card.preset pre{margin:9px 0 0}
+/* 생성기: Gem 링크와 지시문을 한 화면에 */
+.gemrow{display:flex;gap:9px;flex-wrap:wrap;margin:0 0 14px}
+.gem{flex:1 1 240px;display:block;text-decoration:none;padding:10px 13px;
+  border:1px solid var(--accent-b);border-radius:var(--r);background:var(--accent-w);transition:.12s}
+.gem:hover{border-color:var(--accent);box-shadow:0 3px 12px rgba(33,102,207,.13)}
+.gem b{display:block;font-size:13.5px;color:var(--ink)}
+.gem span{display:block;font-size:11.5px;color:var(--dim);margin-top:2px;line-height:1.5}
+.gem em{display:block;font-style:normal;font-size:11px;color:var(--accent);margin-top:5px;font-weight:600}
+.genbox{border:1px solid var(--line);border-radius:var(--r);background:var(--panel);
+  padding:8px 13px;margin:0 0 8px}
+.genbox summary{cursor:pointer;font-size:13.5px;font-weight:600;list-style:none;
+  display:flex;align-items:center;gap:8px;color:var(--ink)}
+.genbox summary::-webkit-details-marker{display:none}
+.genbox summary::before{content:'▸';color:var(--faint);transition:transform .15s;display:inline-block}
+.genbox[open] summary::before{transform:rotate(90deg)}
+.genbox .md{max-width:none;padding-top:6px}
+.genbox .md h2{margin-top:16px}
+.pickrows{max-height:250px;overflow:auto;border:1px solid var(--line2);border-radius:var(--r-sm);
+  background:var(--sunken);overscroll-behavior:contain}
+.pr{display:flex;gap:9px;align-items:baseline;padding:2px 9px;border-bottom:1px solid var(--line2);font-size:12.5px}
+.pr:last-child{border-bottom:none}
+.pr:hover{background:var(--panel)}
+.pk{flex:0 0 132px;color:var(--faint);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pv{flex:0 0 150px;color:var(--ink2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pt{flex:1;min-width:0}
+#main[data-w=sm] .pk,#main[data-w=md] .pk{display:none}
+#main[data-w=sm] .pv{flex:0 0 110px}
+.card .acts{display:flex;gap:5px;flex:none}
+.card .acts button{height:24px;min-width:24px;padding:0 7px;font-size:13px;border-radius:var(--r-sm);
+  border:1px solid var(--line);background:var(--panel);color:var(--ink2);cursor:pointer;transition:.12s}
+.card .acts button:hover{border-color:var(--accent-b);color:var(--accent)}
+.card .acts button.del:hover{border-color:var(--bad);color:var(--bad)}
+.card .edit{display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--line2)}
+.card.open .edit{display:block}
+.card.open .nm{color:var(--accent)}
+.card .edit textarea{min-height:260px;background:var(--sunken)}
+.card .editbar{display:flex;gap:7px;align-items:center;margin-top:8px;flex-wrap:wrap}
+.empty{color:var(--dim);text-align:center;padding:64px 20px;font-size:13.5px;line-height:1.85}
+
+/* ── 토스트 ──────────────────────────────────────────────── */
+#toast{position:fixed;right:20px;bottom:20px;background:var(--panel);border:1px solid var(--line);
+  border-left:3px solid var(--ok);border-radius:9px;padding:11px 16px;font-size:12.5px;opacity:0;
+  transition:opacity .2s;pointer-events:none;z-index:99;box-shadow:0 8px 26px rgba(21,34,50,.16);color:var(--ink)}
+#toast.on{opacity:1}
+#toast.bad{border-left-color:var(--bad)}
+
+/* ═══ 반응형 ═══════════════════════════════════════════════
+   1180↓ 여백 축소 · 900↓ 패널을 서랍으로 + GNB 2단 + 도구 접기
+   600↓  브랜드 부제 삭제 · 480↓ 최소 여백                      */
+@media (max-width:1180px){
+  .hdr-top{padding:0 15px;gap:12px}
+  .hdr-row{padding:10px 15px}
+  main{padding:17px 18px 80px}
+  .brand span{max-width:30ch}
+}
+
+@media (max-width:900px){
+  /* 한 칸으로 눕히고, 파일 목록·담은 태그는 서랍으로 뺀다.
+     예전처럼 display:none 으로 지워버리면 좁은 화면에서 파일을 아예 고를 수 없었다. */
+  #app,#app.noc{grid-template-columns:1fr}
+  .rz{display:none}
+  #cart{position:fixed;top:0;bottom:0;right:0;z-index:50;width:min(84vw,320px);
+    transform:translateX(101%);transition:transform .22s ease;border-left:1px solid var(--line);
+    box-shadow:0 0 34px rgba(11,20,32,.28);padding-bottom:env(safe-area-inset-bottom)}
+  #app.noc #cart{overflow:auto}     /* 서랍은 접힘 클래스와 무관하다 */
+  #cart.open{transform:none}
+
+  .hdr-top{height:auto;min-height:54px;flex-wrap:wrap;gap:9px;padding:9px 14px 0;
+    border-bottom:1px solid var(--line2)}
+  .brand{order:1;flex:1 1 auto;min-width:0}
+  .hdr[data-w=sm] .brand{display:none}
+  .brand b{font-size:14.5px}
+  .brand span{font-size:11px;max-width:100%}
+  .hdr-actions{order:2;margin-left:auto;flex-shrink:0;gap:6px}
+  .nav{order:3;flex:1 0 100%;margin:0 -14px;padding:0 14px;border-top:1px solid var(--line2)}
+  .nav a{flex:1;justify-content:center;height:44px;padding:0}
+  .hdr-tools{border-top:none}
+  .hdr-row{padding:10px 14px}
+  .segwrap{flex:1 1 auto;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none}
+  .segwrap::-webkit-scrollbar{display:none}
+  .seg{flex:none}
+
+  main{padding:15px 14px 90px}
+  .md{max-width:none}
+  .sum{gap:13px;padding:10px 12px}
+  #toast{left:14px;right:14px;bottom:calc(14px + env(safe-area-inset-bottom));text-align:center}
+}
+
+@media (max-width:700px){
+  /* 폭이 부족하면 버튼 글자를 이모지로 바꾼다 */
+  .hdr-actions .t{display:none}
+  .hdr-actions .e{display:inline;font-size:15px;line-height:1}
+  .hdr-actions button.ctl{gap:0;padding:0 11px}
+  .brand span{display:none}               /* 부가 정보 먼저 버린다 */
+  .card .row{gap:7px}
+  .card .meta{display:none}
+}
+
+@media (max-width:480px){
+  .hdr-top{padding:8px 11px 0;gap:6px;min-height:44px}
+  .brand b{font-size:14px}
+  .nav{margin:0 -11px;padding:0 11px}
+  .nav a{height:42px;font-size:13px}
+  .hdr-row{padding:9px 11px}
+  main{padding:13px 11px 90px}
+  .seg button{padding:0 11px;font-size:12px}
+  .sum{gap:11px}
+  .sum b{font-size:15px}
+  .card{padding:9px 11px}
+  .card .acts button{padding:0 8px}
+  .slot{grid-template-columns:30px 1fr;gap:6px}
+  .slot .v{grid-column:1/-1;padding-left:36px}
+}

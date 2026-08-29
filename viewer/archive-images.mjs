@@ -4,7 +4,7 @@
  *   node viewer/archive-images.mjs            # w=800&q=80 으로 받아 viewer/img/ 에 저장
  *   node viewer/archive-images.mjs 1000 90    # 화질을 직접 지정
  *
- * 왜 필요한가 — 그림은 남의 CDN(포스타입) 에 있고 그쪽이 핫링크를 막는다.
+ * 왜 필요한가: 그림은 남의 CDN(포스타입) 에 있고 그쪽이 핫링크를 막는다.
  * `viewer/.imgcache/` 는 서버가 굴리는 임시 캐시라 커밋하지 않으므로,
  * **원본이 지워지거나 다른 컴퓨터에서 clone 하면 그림이 사라진다.**
  * 여기 받아 둔 것은 저장소에 함께 남아 그 둘을 다 견디고, GitHub Pages 에서도 보인다.
@@ -28,7 +28,7 @@ const MAP = join(ROOT, 'viewer', 'images.json');
 const SKIP = new Set(['.git', 'node_modules', 'dcgall', 'viewer']);
 const LANES = 6;                 /* 남의 서버를 두들기지 않는다 */
 
-/* 호스트별로 보내야 하는 Referer — serve.mjs 의 표와 같은 이유다 */
+/* 호스트별로 보내야 하는 Referer: serve.mjs 의 표와 같은 이유다 */
 const REFERER = { 'd2ufj6gm1gtdrc.cloudfront.net': 'https://www.postype.com/' };
 const EXT = { 'image/png':'.png', 'image/jpeg':'.jpg', 'image/gif':'.gif',
               'image/webp':'.webp', 'image/avif':'.avif' };
@@ -43,7 +43,7 @@ async function walk(dir, out = []) {
   return out;
 }
 
-/* CDN 이 크기 파라미터를 받으면 그걸로 줄여 받는다 — 로컬에서 다시 인코딩하지 않아도 된다 */
+/* CDN 이 크기 파라미터를 받으면 그걸로 줄여 받는다. 로컬에서 다시 인코딩하지 않아도 된다 */
 function sized(href) {
   const u = new URL(href);
   if (u.searchParams.has('w')) { u.searchParams.set('w', String(W)); u.searchParams.set('q', String(Q)); }
@@ -74,7 +74,7 @@ const lane = async () => {
           referer: REFERER[u.hostname] || u.origin + '/',
           'user-agent': 'Mozilla/5.0 luvheil-viewer',
           /* 이 CDN 은 Accept 로 형식을 협상한다. 원문 그림은 대부분 스크린샷 PNG 이고
-             PNG 는 무손실이라 q= 가 안 먹는다 — webp 로 받으면 같은 크기에 1/5 이 된다. */
+             PNG 는 무손실이라 q= 가 안 먹는다. webp 로 받으면 같은 크기에 1/5 이 된다. */
           accept: 'image/webp,image/avif,image/*,*/*;q=0.8',
         },
       });

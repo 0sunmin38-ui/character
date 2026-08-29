@@ -3,7 +3,7 @@
  *
  *   node viewer/build-manifest.mjs      # 저장소 루트에서
  *
- * 왜 필요한가 — 뷰어는 평소 서버의 디렉터리 목록을 훑어 파일을 찾는다.
+ * 왜 필요한가: 뷰어는 평소 서버의 디렉터리 목록을 훑어 파일을 찾는다.
  * 그런데 GitHub Pages 는 디렉터리 목록을 주지 않는다. 그래서 목록을 파일로 굳혀 둔다.
  * manifest.json 이 있으면 뷰어는 그걸 먼저 쓰고, 없으면 예전처럼 디렉터리를 훑는다.
  */
@@ -34,4 +34,4 @@ catch {}
 const files = (await walk(ROOT)).sort();
 const out = join(ROOT, 'viewer', 'manifest.json');
 await writeFile(out, JSON.stringify({ generated: new Date().toISOString(), files, samples }, null, 2) + '\n');
-console.log(`viewer/manifest.json — ${files.length}개 파일 · 작가 견본 ${samples.length}장`);
+console.log(`viewer/manifest.json: ${files.length}개 파일 · 작가 견본 ${samples.length}장`);

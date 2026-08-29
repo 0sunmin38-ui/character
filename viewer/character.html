@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>luvheil 캐릭터</title>
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<div id="app" class="solo">
+  <header class="hdr" id="hdr">
+    <div class="hdr-top">
+      <div class="brand"><b>luvheil</b><span id="sub"></span></div>
+      <nav class="nav">
+        <a href="index.html"><span class="txt">에셋</span><span class="ico">🎨</span></a>
+        <a href="character.html" class="active"><span class="txt">캐릭터</span><span class="ico">👤</span></a>
+      </nav>
+      <div class="hdr-actions">
+        <button class="ctl i" id="reload" title="저장소 다시 읽기 (터미널에서 만든 파일 반영)">⟳</button>
+      </div>
+    </div>
+    <div class="hdr-tools" id="tools">
+      <div class="hdr-row"><div class="segwrap"><div class="seg" id="subs"></div></div></div>
+    </div>
+  </header>
+  <main id="main"></main>
+</div>
+<div id="scrim"></div>
+<div id="toast"></div>
+
+<script src="js/core.js"></script>
+<script src="js/character.js"></script>
+<script>boot();</script>
+</body>
+</html>
