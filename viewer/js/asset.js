@@ -212,7 +212,6 @@ function toggleMark(t){
     el.classList.toggle('mk', MARKS.has(t));
     const b = el.querySelector('.bm'); if(b) b.textContent = MARKS.has(t) ? '★' : '☆';
   });
-  drawMarkBtn();
   toast(t + (MARKS.has(t) ? ' 북마크' : ' 북마크 해제'));
 }
 
@@ -225,20 +224,22 @@ document.addEventListener('click', e => {
   toggleMark(chip.dataset.t);
 }, true);
 
-function drawMarkBtn(){
-  const b = $('#tgMark'); if(!b) return;
-  b.classList.toggle('on', onlyMark);
-  b.title = (onlyMark ? '북마크한 것만 보는 중 · 눌러서 전체' : '북마크한 것만 보기')
-          + ` (${MARKS.size}개)`;
+/* 거르개는 거르는 자리에 둔다. NSFW 숨김 옆, 각 사전의 바에.
+   상태는 사전 갈래를 옮겨도 남는다 — 북마크만 보다가 탭을 옮겼는데
+   갑자기 전체가 나오면 그건 거르개가 아니다. */
+const markBox = () => `<label class="muted" title="북마크한 태그만 보기">
+    <input type="checkbox" class="bmk"${onlyMark?' checked':''}> ★ 북마크만</label>`;
+
+function wireMarkBox(run){
+  document.querySelectorAll('.bmk').forEach(el=>{
+    el.onchange = () => {
+      onlyMark = el.checked;
+      localStorage.setItem('char.onlymark', onlyMark?'1':'0');
+      if(onlyMark && !MARKS.size) toast('아직 북마크한 태그가 없습니다', true);
+      run();
+    };
+  });
 }
-if($('#tgMark')) $('#tgMark').onclick = () => {
-  onlyMark = !onlyMark;
-  localStorage.setItem('char.onlymark', onlyMark?'1':'0');
-  drawMarkBtn();
-  if(!MARKS.size && onlyMark){ toast('아직 북마크한 태그가 없습니다', true); return; }
-  setTab(S.tab);                      /* 보고 있던 화면을 그대로 다시 그린다 */
-};
-drawMarkBtn();
 
 /* 담는 자리(태그 탭)와 바로 넣는 자리(파츠 피커)가 다르다. 후자는 상위에서 클릭을 받는다 */
 function tagCell(t, mode){
@@ -276,6 +277,7 @@ function dictPlain(){
       <select class="ctl" id="c1"></select>
       <select class="ctl" id="c2"></select>
       <label class="muted"><input type="checkbox" id="sfw" checked> NSFW 숨김</label>
+      ${markBox()}
       <span class="sp"></span>
       ${S.static?'':'<button class="btn i" id="padd" title="추가 (줄을 더블클릭하면 고칩니다)">＋</button>'}
     </div>
@@ -322,6 +324,7 @@ function dictPlain(){
   $('#p').onchange=()=>{syncCats();run();};
   $('#c1').onchange=()=>{syncCats();run();};
   ['#q','#c2','#sfw'].forEach(x=>{const e=$(x); e.oninput=e.onchange=run;});
+  wireMarkBox(run);
   syncCats(); run(); $('#q').focus();
 }
 
@@ -347,6 +350,9 @@ function dictArtist(){
   $('#dbody').innerHTML = `<div class="bar" id="abar">
       <input class="ctl" type="search" id="aq" placeholder="작가 태그 검색">
       <label class="muted"><input type="checkbox" id="aonly"> 견본 있는 것만</label>
+      ${markBox()}
+      ${S.asset || !FS_OK ? '' :
+        `<button class="btn i" id="pdir" title="${DIR?'폴더 연결됨 · 다시 고르기':'작가샘플 폴더를 열어 서버 없이 저장하기'}">${DIR?'📂':'📁'}</button>`}
       <span class="sp"></span>
       ${S.static?'':'<button class="btn i" id="padd" title="추가 (줄을 더블클릭하면 고칩니다)">＋</button>'}
     </div>
@@ -366,7 +372,8 @@ function dictArtist(){
       const tag=x.tags[0], sl=slugOf(tag), got=idx[sl]||{};
       const cell=sex=>`<td class="samp" tabindex="0" data-slug="${esc(sl)}" data-sex="${sex}">`
         + (got[sex]
-            ? `<img src="${esc(ROOT+SAMPLE_DIR+'/'+got[sex])}" alt="${esc(tag)} ${sex}" loading="lazy">`
+            ? (DIR ? `<img data-f="${esc(got[sex])}" alt="${esc(tag)} ${sex}">`
+                   : `<img src="${esc(ROOT+SAMPLE_DIR+'/'+got[sex])}" alt="${esc(tag)} ${sex}" loading="lazy">`)
             : `<span class="drop">${esc(sl)}_${sex}<br><span class="muted">끌어놓기 · 눌러서 ${PASTE_KEY}</span></span>`)
         + `</td>`;
       return `<tr data-i="${i}"><td class="wrap">${tagCell(tag)}</td>${cell('남')}${cell('여')}
@@ -379,7 +386,9 @@ function dictArtist(){
     };
   };
   ['#aq','#aonly'].forEach(x=>{const e=$(x); e.oninput=e.onchange=run;});
+  wireMarkBox(run);
   if($('#padd')) $('#padd').onclick=()=>openRowForm($('#form'),'artist',null,()=>dictArtist());
+  if($('#pdir')) $('#pdir').onclick=dirPick;
   run();
 }
 /* 견본을 칸에 넣는 길은 둘이다: 끌어놓기, 그리고 칸을 눌러 고른 뒤 붙여넣기.
@@ -421,27 +430,118 @@ async function shrink(file){
   }catch{ return null; }                          /* 못 줄이면 원본으로 간다 */
 }
 
+/* ── 폴더 권한 ────────────────────────────────
+   웹페이지는 제 마음대로 디스크에 못 쓴다. 서버가 대신 받아 주거나,
+   사람이 폴더를 열어 주거나 둘 중 하나다. 후자가 File System Access API 다.
+   한 번 고르면 권한이 남아서, 다음부터는 서버 없이 붙여넣기만 하면 된다.
+   Chrome·Edge 에만 있다. Safari·Firefox 는 서버로 띄워야 한다. */
+const FS_OK = typeof window.showDirectoryPicker === 'function';
+let DIR = null;                 /* 작가샘플 폴더 손잡이 */
+const BLOB = {};                /* 파일이름 → blob URL · 폴더 모드에서 그림을 그린다 */
+
+/* 손잡이는 문자열이 아니라 객체다. localStorage 가 아니라 IndexedDB 에 넣는다 */
+function idb(mode, fn){
+  return new Promise((res, rej) => {
+    const r = indexedDB.open('luvheil', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('kv');
+    r.onerror = () => rej(r.error);
+    r.onsuccess = () => {
+      const q = fn(r.result.transaction('kv', mode).objectStore('kv'));
+      q.onsuccess = () => res(q.result);
+      q.onerror   = () => rej(q.error);
+    };
+  });
+}
+
+async function dirScan(){                      /* 폴더에 실제로 있는 견본 목록 */
+  const names = [];
+  for await (const [n, h] of DIR.entries())
+    if(h.kind === 'file' && /\.(webp|png|jpe?g|gif|avif)$/i.test(n)) names.push(n);
+  S.samples = names;
+}
+
+async function dirUse(h, ask){
+  const mode = {mode:'readwrite'};
+  let ok = await h.queryPermission(mode);
+  if(ok !== 'granted' && ask) ok = await h.requestPermission(mode);   /* 클릭 안에서만 통한다 */
+  if(ok !== 'granted') return false;
+  DIR = h; await dirScan(); return true;
+}
+
+async function dirPick(){
+  try{
+    const h = await showDirectoryPicker({id:'luvheil-samples', mode:'readwrite'});
+    if(!await dirUse(h, true)) return toast('쓰기 권한을 못 받았습니다', true);
+    await idb('readwrite', st => st.put(h, 'sampledir'));
+    toast(`폴더 연결됨 · 견본 ${S.samples.length}장 · 이제 서버 없이 저장한다`);
+    drawDict();
+  }catch(e){ if(e.name !== 'AbortError') toast('폴더를 열지 못했습니다: '+e.message, true); }
+}
+
+/* 새로고침하면 권한이 'prompt' 로 돌아와 있을 수 있다. 그때는 버튼을 다시 눌러 줘야 한다 */
+async function dirRestore(){
+  if(!FS_OK || S.asset) return;
+  try{
+    const h = await idb('readonly', st => st.get('sampledir'));
+    if(h) await dirUse(h, false);
+  }catch{}
+}
+
+/* 커밋 전 그림은 주소로 못 부른다. 폴더에서 읽어 blob 으로 건다 */
+async function sampSrc(name, known){
+  if(!DIR) return ROOT + SAMPLE_DIR + '/' + name + '?t=' + Date.now();
+  if(BLOB[name]) URL.revokeObjectURL(BLOB[name]);
+  const blob = known || await (await DIR.getFileHandle(name)).getFile();
+  return BLOB[name] = URL.createObjectURL(blob);
+}
+
+/* 서버가 하던 뒷정리를 폴더 모드에서도 한다: 같은 칸의 옛 확장자 파일을 치운다 */
+async function dirWrite(name, blob){
+  const w = await (await DIR.getFileHandle(name, {create:true})).createWritable();
+  await w.write(blob); await w.close();
+  const stem = name.slice(0, name.lastIndexOf('.'));
+  const gone = [];
+  for await (const [n, h] of DIR.entries()){
+    if(n === name || h.kind !== 'file') continue;
+    const i = n.lastIndexOf('.');
+    if(i > 0 && n.slice(0, i) === stem && /\.(webp|png|jpe?g|gif|avif)$/i.test(n)){
+      await DIR.removeEntry(n); gone.push(n);
+    }
+  }
+  return gone;
+}
+
 async function putSample(td, file){
   if(!file || !SAMP) return;
-  if(!S.asset){ toast('서버로 열어야 저장할 수 있습니다', true); return; }
+  if(!S.asset && !DIR){
+    toast(FS_OK ? '먼저 「폴더 연결」 을 눌러 작가샘플 폴더를 열어 주세요'
+                : '이 브라우저는 폴더 쓰기가 안 됩니다. Chrome 으로 열거나 서버로 띄우세요', true);
+    return;
+  }
   const small = await shrink(file);
   const src   = small || file;
   const ext   = EXT_OF[src.type]
               || (String(src.name||'').match(/\.[^.]+$/)||['.png'])[0].toLowerCase();
   const name  = `${td.dataset.slug}_${td.dataset.sex}${ext}`;
   if(src.size > SAMPLE_MAX){ toast(`${kb(src.size)} · 10MB 를 넘어 못 넣습니다`, true); return; }
-  const data = await new Promise(r=>{ const fr=new FileReader(); fr.onload=()=>r(fr.result); fr.readAsDataURL(src); });
-  const res  = await post('_asset', {name, data});
-  if(!res.ok){ toast('저장 실패: '+await res.text(), true); return; }
-  /* 서버가 같은 칸의 옛 확장자 파일을 치웠다면 목록에서도 뺀다 */
-  const info = await res.json().catch(()=>({}));
-  const dead = new Set([name, ...(info.removed||[])]);
+  let removed;
+  if(S.asset){
+    const data = await new Promise(r=>{ const fr=new FileReader(); fr.onload=()=>r(fr.result); fr.readAsDataURL(src); });
+    const res  = await post('_asset', {name, data});
+    if(!res.ok){ toast('저장 실패: '+await res.text(), true); return; }
+    removed = (await res.json().catch(()=>({}))).removed || [];
+  } else {
+    try{ removed = await dirWrite(name, src); }
+    catch(e){ toast('저장 실패: '+e.message, true); return; }
+  }
+  /* 같은 칸의 옛 확장자 파일이 치워졌다면 목록에서도 뺀다 */
+  const dead = new Set([name, ...removed]);
   S.samples = (S.samples||[]).filter(f=>!dead.has(f)).concat(name);
   (SAMP.idx[td.dataset.slug] ||= {})[td.dataset.sex] = name;
   /* 표를 다시 그리면 30줄씩 새로 깔리면서 스크롤이 맨 위로 튄다.
      바뀐 건 이 칸 하나다. 이 칸만 바꾼다. */
-  const url = ROOT + SAMPLE_DIR + '/' + name;
-  td.innerHTML = `<img src="${esc(url)}?t=${Date.now()}" alt="${esc(name)}">`;
+  td.innerHTML = `<img alt="${esc(name)}">`;
+  td.querySelector('img').src = await sampSrc(name, src);
   toast(name + ' 저장됨 · ' + (small ? `${kb(file.size)} → ${kb(small.size)}` : kb(file.size)));
 }
 
@@ -474,6 +574,11 @@ function unpick(){
 
 function wireDrop(idx){
   SAMP = {idx};
+  /* 폴더 모드의 그림은 주소가 없다. 줄이 깔린 뒤에 하나씩 blob 을 물린다 */
+  if(DIR) $('#arows').querySelectorAll('img[data-f]').forEach(async img=>{
+    const f = img.dataset.f; delete img.dataset.f;
+    try{ img.src = BLOB[f] || await sampSrc(f); }catch{}
+  });
   $('#arows').querySelectorAll('td.samp').forEach(td=>{
     if(PICK && td.dataset.slug===PICK.slug && td.dataset.sex===PICK.sex) td.classList.add('pick');
     td.ondragover  = e => { e.preventDefault(); td.classList.add('over'); };
@@ -501,6 +606,7 @@ function dictStyle(){
   const rows = S.tags.filter(r=>r.p==='style');
   $('#dbody').innerHTML = `<div class="bar" id="sbar">
       <input class="ctl" type="search" id="sq" placeholder="태그 · 뜻 검색">
+      ${markBox()}
       <select class="ctl" id="sg"><option value="">분류 전체</option>
         ${[...new Set(rows.map(r=>r.g))].sort().map(g=>`<option>${esc(g)}</option>`).join('')}</select>
       <span class="sp"></span>
@@ -527,6 +633,7 @@ function dictStyle(){
     };
   };
   ['#sq','#sg'].forEach(x=>{const e=$(x); e.oninput=e.onchange=run;});
+  wireMarkBox(run);
   if($('#padd')) $('#padd').onclick=()=>openRowForm($('#form'),'style',null,()=>dictStyle());
   run();
 }
@@ -1238,5 +1345,6 @@ const PAGE = {
         for(const t of body.replace(/-?[\d.]+::/g,'').replace(/::/g,'').split(','))
           if(t.trim()) S.preset_vocab.add(norm(t));
     buildTags(); loadCart();
+    await dirRestore();       /* 지난번에 열어 준 폴더가 있으면 그대로 쓴다 */
   },
 };

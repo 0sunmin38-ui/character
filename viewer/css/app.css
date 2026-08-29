@@ -184,7 +184,6 @@ code,.tag{font-family:var(--mono);font-size:12.5px}
 .tag.mk{border-color:var(--warn);background:var(--panel)}
 .tag.mk .bm{opacity:1;color:var(--warn)}
 .tag.mk:hover .bm{color:#fff}
-.ctl.on{background:var(--accent);color:#fff;border-color:var(--accent)}
 .nsfw{color:var(--bad);font-weight:700;font-size:11px}
 /* 본문 표: 좁으면 부가 컬럼부터 접는다 */
 #main[data-w=md] .opt,#main[data-w=sm] .opt{display:none}
