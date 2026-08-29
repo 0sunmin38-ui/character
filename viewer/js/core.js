@@ -468,6 +468,43 @@ async function reload(){
 }
 
 
+/* ── 스크롤해서 이어 그리기 ──────────────────
+   태그사전은 4,205행이다. 통째로 그리면 첫 화면이 늦고,
+   400개에서 끊으면 나머지를 볼 길이 없다. 바닥에 닿으면 다음 묶음을 잇는다.
+
+   host  이미 목록이 그려진 상자 (표라면 tbody 에, 아니면 host 에 이어 붙인다)
+   items 전체 목록. 자른 것이 아니라 다 넘긴다
+   step  한 번에 몇 개
+   after 묶음을 이을 때마다 부를 것 (숨긴 열 다시 적용 등) */
+function lazyRows(host, items, rowHTML, step, after){
+  const box = host.querySelector('tbody') || host;
+  const root = host.closest('main') || host.closest('.pickrows') || host.parentElement;
+  const mark = document.createElement('div');
+  mark.className = 'lazymark';
+  host.appendChild(mark);
+  let n = 0, io = null;
+  const draw = () => {
+    const part = items.slice(n, n + step);
+    if(part.length){
+      box.insertAdjacentHTML('beforeend', part.map((x,i)=>rowHTML(x, n+i)).join(''));
+      n += part.length;
+      if(after) after();
+    }
+    if(n >= items.length){
+      if(io) io.disconnect();
+      mark.remove();
+    } else {
+      mark.textContent = `${n.toLocaleString()} / ${items.length.toLocaleString()}`;
+    }
+  };
+  draw();                                   /* 첫 묶음은 바로 */
+  if(n < items.length){
+    io = new IntersectionObserver(es => { if(es.some(e=>e.isIntersecting)) draw(); },
+      { root: root && root.scrollHeight > root.clientHeight ? root : null, rootMargin: '400px' });
+    io.observe(mark);
+  }
+}
+
 /* ── 탭 · 알림 ──────────────────────────────── */
 function initTabs(){
   $('#subs').innerHTML = PAGE.tabs.map(([k,n])=>`<button data-t="${k}">${esc(n)}</button>`).join('');

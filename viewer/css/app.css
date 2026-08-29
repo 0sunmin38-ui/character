@@ -329,9 +329,6 @@ textarea.pbox:focus{background:var(--panel)}
   padding:4px 7px;border-radius:var(--r-sm);cursor:pointer;white-space:nowrap}
 .colitem:hover{background:var(--accent-w);color:var(--accent)}
 .colmenu .sep,.colpop .sep{display:block;height:1px;background:var(--line2);margin:4px 2px}
-button.mini{height:22px;min-width:22px;padding:0 6px;font-size:12.5px;border-radius:var(--r-sm);
-  border:1px solid var(--line);background:var(--panel);color:var(--dim);cursor:pointer;white-space:nowrap}
-button.mini:hover{border-color:var(--accent-b);color:var(--accent)}
 .card.preset pre{margin:9px 0 0}
 /* 생성기: Gem 링크와 지시문을 한 화면에 */
 .gemrow{display:flex;gap:9px;flex-wrap:wrap;margin:0 0 14px}
@@ -354,6 +351,9 @@ button.mini:hover{border-color:var(--accent-b);color:var(--accent)}
   background:var(--sunken);overscroll-behavior:contain}
 .pr{display:flex;gap:9px;align-items:baseline;padding:2px 9px;border-bottom:1px solid var(--line2);font-size:12.5px}
 .pr:last-child{border-bottom:none}
+/* 이어 그릴 자리 표시. 여기에 닿으면 다음 묶음이 붙는다 */
+.lazymark{padding:7px 10px;text-align:center;font-size:11px;color:var(--faint);
+  font-variant-numeric:tabular-nums;letter-spacing:.04em}
 .pr:hover{background:var(--panel)}
 .pk{flex:0 0 132px;color:var(--faint);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pv{flex:0 0 150px;color:var(--ink2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

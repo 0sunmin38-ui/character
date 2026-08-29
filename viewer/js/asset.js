@@ -79,7 +79,7 @@ function applyHidden(table, key){
   for(const row of table.rows)
     [...row.cells].forEach((c,i)=>{ c.style.display = hide.has(i) ? 'none' : ''; });
 }
-const colLabel = (labels,i) => labels[i] || '작업';
+const colLabel = (labels,i) => labels[i] || `${i+1}번째 열`;
 
 /* 열 목록: ▥ 버튼과 머리글 팝오버가 같은 내용을 쓴다.
    clicked 가 있으면 그 열을 바로 숨기는 항목을 맨 위에 얹는다. */
@@ -230,7 +230,7 @@ function dictPlain(){
       <select class="ctl" id="c2"></select>
       <label class="muted"><input type="checkbox" id="sfw" checked> NSFW 숨김</label>
       <span class="sp"></span>
-      ${S.static?'':'<button class="btn i" id="padd" title="추가">＋</button>'}
+      ${S.static?'':'<button class="btn i" id="padd" title="추가 (줄을 더블클릭하면 고칩니다)">＋</button>'}
     </div>
     <div id="form"></div>
     <div id="rows"></div>`;
@@ -250,23 +250,24 @@ function dictPlain(){
     if(c2) r=r.filter(x=>x.s===c2);
     if(q) r=r.filter(x=>(x.ko+' '+x.tags.join(' ')+' '+x.g+' '+x.s+' '+x.note).toLowerCase().includes(q));
     if(sfw) r=r.filter(x=>!x.nsfw);
-    const shown = r.slice(0,400);
-    $('#rows').innerHTML = tbl(['목적|opt2 meta','분류|opt meta','세부|opt2 meta','뜻','태그','|meta','비고|opt meta',''],
-      shown.map((x,i)=>`<tr data-i="${i}">
+    $('#rows').innerHTML = tbl(['목적|opt2 meta','분류|opt meta','세부|opt2 meta','뜻','태그','NSFW|meta','비고|opt meta'],'',true);
+    const table = $('#rows').querySelector('table');
+    wireGrid($('#rows'), 'plain', '#dbar');
+    lazyRows($('#rows'), r, (x,i)=>`<tr data-i="${i}">
         <td class="muted opt2 meta">${esc(PNAME[x.p]||'')}</td>
         <td class="muted opt meta">${esc(x.g)}</td>
         <td class="muted opt2 meta">${esc(x.s)}</td>
         <td class="wrap">${esc(x.ko)}</td>
         <td class="wrap">${x.tags.map(t=>tagCell(t)).join(' ')}</td>
         <td class="meta">${x.nsfw?'<span class="nsfw">NSFW</span>':''}</td>
-        <td class="muted opt meta wrap">${esc(x.note)}</td>
-        <td class="meta">${S.static?'':'<button class="mini" data-a="edit" title="수정">✎</button>'}</td></tr>`).join(''), true)
-      + (r.length>400?'<p class="muted">상위 400건만 표시했습니다. 검색을 좁혀주세요.</p>':'');
-    wireGrid($('#rows'), 'plain', '#dbar');
-    $('#rows').onclick = e => {
-      if(e.target.dataset.a!=='edit') return;
-      const x = shown[+e.target.closest('tr').dataset.i];
-      openRowForm($('#form'), 'plain', x.src, ()=>{ dictPlain(); });
+        <td class="muted opt meta wrap">${esc(x.note)}</td></tr>`,
+      120, ()=>applyHidden(table,'plain'));   /* 이어 붙인 줄에도 숨긴 열을 적용한다 */
+    /* 고치기는 줄을 더블클릭한다. 버튼 하나 때문에 빈 열을 세우면 자리만 먹는다.
+       태그는 한 번 눌러 담는 것이라 더블클릭과 겹치지 않게 비켜준다. */
+    $('#rows').ondblclick = e => {
+      if(S.static || e.target.closest('.tag')) return;
+      const tr = e.target.closest('tr'); if(!tr) return;
+      openRowForm($('#form'), 'plain', r[+tr.dataset.i].src, ()=>dictPlain());
     };
   };
   if($('#padd')) $('#padd').onclick = ()=>openRowForm($('#form'), 'plain', null, ()=>dictPlain());
@@ -301,7 +302,7 @@ function dictArtist(){
         ${[...new Set(rows.map(r=>r.g))].map(g=>`<option>${esc(g)}</option>`).join('')}</select>
       <label class="muted"><input type="checkbox" id="aonly"> 견본 있는 것만</label>
       <span class="sp"></span>
-      ${S.static?'':'<button class="btn i" id="padd" title="추가">＋</button>'}
+      ${S.static?'':'<button class="btn i" id="padd" title="추가 (줄을 더블클릭하면 고칩니다)">＋</button>'}
     </div>
     <div id="form"></div>
     <div id="arows"></div>`;
@@ -311,7 +312,11 @@ function dictArtist(){
     if(g) r=r.filter(x=>x.g===g);
     if(q) r=r.filter(x=>x.tags.join(' ').toLowerCase().includes(q));
     if(only) r=r.filter(x=>idx[slugOf(x.tags[0])]);
-    $('#arows').innerHTML = tbl(['태그','남캐','여캐','비고|opt meta','섹션|opt2 meta',''], r.map((x,i)=>{
+    $('#arows').innerHTML = tbl(['태그','남캐','여캐','비고|opt meta','섹션|opt2 meta'], '', true);
+    const table = $('#arows').querySelector('table');
+    wireGrid($('#arows'), 'artist', '#abar');
+    /* 견본 그림이 무거워 한 번에 30줄씩 */
+    lazyRows($('#arows'), r, (x,i)=>{
       const tag=x.tags[0], sl=slugOf(tag), got=idx[sl]||{};
       const cell=sex=>`<td class="samp" data-slug="${esc(sl)}" data-sex="${sex}">`
         + (got[sex]
@@ -320,15 +325,13 @@ function dictArtist(){
         + `</td>`;
       return `<tr data-i="${i}"><td class="wrap">${tagCell(tag)}</td>${cell('남')}${cell('여')}
         <td class="muted opt meta">${esc(x.note)}</td>
-        <td class="muted opt2 meta">${esc(x.g)}</td>
-        <td class="meta">${S.static?'':'<button class="mini" data-a="edit" title="수정">✎</button>'}</td></tr>`;
-    }).join(''), true);
-    wireGrid($('#arows'), 'artist', '#abar');
-    wireDrop(idx, run);
-    $('#arows').addEventListener('click', e=>{
-      if(e.target.dataset.a!=='edit') return;
-      openRowForm($('#form'), 'artist', r[+e.target.closest('tr').dataset.i].src, ()=>dictArtist());
-    });
+        <td class="muted opt2 meta">${esc(x.g)}</td></tr>`;
+    }, 30, ()=>{ applyHidden(table,'artist'); wireDrop(idx, run); });
+    $('#arows').ondblclick = e => {
+      if(S.static || e.target.closest('.tag') || e.target.closest('.samp')) return;
+      const tr = e.target.closest('tr'); if(!tr) return;
+      openRowForm($('#form'), 'artist', r[+tr.dataset.i].src, ()=>dictArtist());
+    };
   };
   ['#aq','#ag','#aonly'].forEach(x=>{const e=$(x); e.oninput=e.onchange=run;});
   if($('#padd')) $('#padd').onclick=()=>openRowForm($('#form'),'artist',null,()=>dictArtist());
@@ -365,22 +368,25 @@ function dictStyle(){
       <select class="ctl" id="sg"><option value="">분류 전체</option>
         ${[...new Set(rows.map(r=>r.g))].sort().map(g=>`<option>${esc(g)}</option>`).join('')}</select>
       <span class="sp"></span>
-      ${S.static?'':'<button class="btn i" id="padd" title="추가">＋</button>'}
+      ${S.static?'':'<button class="btn i" id="padd" title="추가 (줄을 더블클릭하면 고칩니다)">＋</button>'}
     </div><div id="form"></div><div id="srows"></div>`;
   const run=()=>{
     const q=$('#sq').value.trim().toLowerCase(), g=$('#sg').value;
     let r=rows;
     if(g) r=r.filter(x=>x.g===g);
     if(q) r=r.filter(x=>(x.tags.join(' ')+' '+x.ko).toLowerCase().includes(q));
-    $('#srows').innerHTML = tbl(['분류|opt2 meta','세부|opt meta','태그','뜻',''], r.map((x,i)=>`<tr data-i="${i}">
+    $('#srows').innerHTML = tbl(['분류|opt2 meta','세부|opt meta','태그','뜻'], '', true);
+    const table = $('#srows').querySelector('table');
+    wireGrid($('#srows'), 'style', '#sbar');
+    lazyRows($('#srows'), r, (x,i)=>`<tr data-i="${i}">
       <td class="muted opt2 meta">${esc(x.g)}</td><td class="muted opt meta">${esc(x.s)}</td>
       <td class="wrap">${x.tags.map(t=>tagCell(t)).join(' ')}</td>
-      <td class="wrap">${esc(x.ko)}</td>
-      <td class="meta">${S.static?'':'<button class="mini" data-a="edit" title="수정">✎</button>'}</td></tr>`).join(''), true);
-    wireGrid($('#srows'), 'style', '#sbar');
-    $('#srows').onclick = e => {
-      if(e.target.dataset.a!=='edit') return;
-      openRowForm($('#form'), 'style', r[+e.target.closest('tr').dataset.i].src, ()=>dictStyle());
+      <td class="wrap">${esc(x.ko)}</td></tr>`,
+      120, ()=>applyHidden(table,'style'));
+    $('#srows').ondblclick = e => {
+      if(S.static || e.target.closest('.tag')) return;
+      const tr = e.target.closest('tr'); if(!tr) return;
+      openRowForm($('#form'), 'style', r[+tr.dataset.i].src, ()=>dictStyle());
     };
   };
   ['#sq','#sg'].forEach(x=>{const e=$(x); e.oninput=e.onchange=run;});
@@ -520,7 +526,7 @@ function drawPresets(){
   $('#dbody').innerHTML = `<div class="bar">
       ${segHTML('pseg', [['Q','퀄리티 Q'],['N','부정 N']], cur)}
       <span class="sp"></span>
-      ${S.static?'':`<button class="btn i" id="padd" title="추가">＋</button>`}
+      ${S.static?'':`<button class="btn i" id="padd" title="추가 (줄을 더블클릭하면 고칩니다)">＋</button>`}
     </div>
     <div id="pform"></div>
     ${keys.map(k=>`<div class="card preset" data-k="${esc(k)}">
@@ -682,19 +688,18 @@ function wirePicker(kind, onPick){
     if(g) r = r.filter(x=>x.g===g);
     if(q) r = r.filter(x=>(x.ko+' '+x.tags.join(' ')+' '+x.g+' '+x.s).toLowerCase().includes(q));
     if(sfw) r = r.filter(x=>!x.nsfw);
-    const shown = r.slice(0,160);
-    el('prows').innerHTML = shown.map((x,i)=>`<div class="pr" data-i="${i}">
+    el('prows').innerHTML = r.length ? ''
+      : '<p class="muted" style="padding:12px">해당하는 태그가 없습니다.</p>';
+    lazyRows(el('prows'), r, (x,i)=>`<div class="pr" data-i="${i}">
         <span class="pk">${esc(x.g)}${x.s?' · '+esc(x.s):''}</span>
         <span class="pv">${esc(x.ko)}</span>
         <span class="pt">${x.tags.map(t=>tagCell(t,'pick')).join(' ')}</span>
         ${x.nsfw?'<span class="nsfw">NSFW</span>':''}
-      </div>`).join('')
-      || '<p class="muted" style="padding:12px">해당하는 태그가 없습니다.</p>';
+      </div>`, 60);
     /* 누른 행을 그대로 넘긴다. 글자로 다시 찾으면 같은 이름의 다른 행을 집는다 */
     el('prows').onclick = e => {
       const t = e.target.closest('.tag'); if(!t) return;
-      const row = shown[+e.target.closest('.pr').dataset.i];
-      onPick(t.dataset.t, slotOf(row));
+      onPick(t.dataset.t, slotOf(r[+e.target.closest('.pr').dataset.i]));
     };
   };
   if(el('pp')) el('pp').onchange = () => { syncG(); run(); };
