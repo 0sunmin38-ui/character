@@ -36,7 +36,6 @@
 | `04_생성기/` | 도구 | AI에게 시킬 메타 프롬프트 (Gems 대체) |
 | `05_검토/` | 도구 | 완성 초안을 점검하는 검토표 |
 | `99_작업중/` | 임시 | 초안·실험. 정리되면 03으로 승격 |
-| `dcgall/` | 수집기 | 디시 AI채팅 갤러리 크롤러. 새 프롬프트/노하우 자동 수집 |
 | `문서구분표.md` | 색인 | **원문 / 정리 / 작업 구분 + 읽는 순서** |
 
 ```
@@ -54,11 +53,10 @@ luvheilassistant/
 ├── 04_생성기/
 ├── 05_검토/            초안 점검 체크리스트
 ├── 99_작업중/이미지/     뷰어 이미지→조립 에서 저장한 초안
-├── viewer/             에셋 화면 (node viewer/serve.mjs)
-└── dcgall/             디시 AI채팅 갤러리 크롤러 (수집 도구)
+└── viewer/             에셋 화면 (node viewer/serve.mjs)
 ```
 
-`dcgall/` 은 **프롬프트 파이프라인 밖의 소프트웨어**라 `00_`~`05_` 번호를 붙이지 않았다.
+수집기 `dcgall` 은 파이프라인 밖의 소프트웨어라 이 저장소에서 떨어져 나갔다. 아래 참고.
 
 ---
 
@@ -91,16 +89,13 @@ luvheilassistant/
 
 ---
 
-## dcgall: 수집기
+## dcgall: 수집기 (별도 저장소)
 
-디시인사이드 AI채팅 마이너 갤러리에서 개념글·검색 결과를 긁어 `dcgall/data/` 에 쌓고
-`dcgall/out/index.html` 로 리포트를 만든다. 새 퀄리티/부정 프롬프트, 지침 노하우를 찾는 용도.
+디시인사이드 AI채팅 마이너 갤러리에서 개념글·검색 결과를 긁어 새 퀄리티/부정 프롬프트,
+지침 노하우를 찾는 도구. **이 저장소에 없다** — 저장소 `AIchatCollector`, 로컬 위치는 옆 폴더 `../dcgall`.
 
 ```bash
-node dcgall/crawl.mjs daily     # 전체글 5p + 개념글 3p
-node dcgall/crawl.mjs sweep     # 개념글 15p 깊게
-node dcgall/crawl.mjs watch     # 키워드 감시 (프롬프트 / 지침 / 제타)
-node dcgall/report.mjs          # out/index.html 생성
+cd ../dcgall && ./run.sh daily   # 사용법·크론 설정은 그쪽 README
 ```
 
 수집물에서 건진 것은 **그대로 두지 말고** 해당 위치로 옮긴다.
