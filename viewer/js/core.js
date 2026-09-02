@@ -1,14 +1,14 @@
 /* ─────────────────────────────────────────────
    luvheilassistant 뷰어: 공용 뼈대
 
-   화면은 둘로 갈렸다. 에셋(index.html)과 캐릭터(character.html).
-   여기 있는 것은 두 쪽이 똑같이 쓰는 것뿐이다: 저장소 읽기, 마크다운, 저장·초안,
+   화면은 에셋(index.html) 하나다. 캐릭터 쪽은 별도 저장소 luvheilcharacter 로 갔다.
+   여기 있는 것은 화면이 갈려도 똑같이 쓰는 것뿐이다: 저장소 읽기, 마크다운, 저장·초안,
    생성기, 탭·토스트·패널.
 
    각 페이지는 아래 하나를 정의해 두고 이 파일을 나중에 불러 붙인다.
 
      const PAGE = {
-       side : 'img' | 'bot',        저장·생성기가 어느 쪽 것을 보는가
+       side : 'img',                저장·생성기·탭기억이 어느 쪽 것을 보는가
        tabs : [[키, 이름], …],       상단 서브탭
        views: { 키: 그리는 함수 },
        load : async () => {}         (선택) 그 페이지가 더 읽어야 할 자료
@@ -20,8 +20,8 @@ const SKIP = /^(\.|dcgall\/|viewer\/|node_modules)/;
 /* 뷰어가 viewer/ 안에 있으므로 저장소 루트를 기준으로 잡는다. */
 const ROOT = location.pathname.replace(/viewer\/[^/]*$/, '');
 
-/* 초안이 사는 곳: 만들어진 쪽을 따라 갈라 둔다. */
-const DRAFT_DIR = { img:'99_작업중/이미지/', bot:'99_작업중/챗봇/' };
+/* 초안이 사는 곳. */
+const DRAFT_DIR = { img:'99_작업중/이미지/' };
 const SAMPLE_DIR = '01_자료/이미지/작가샘플';
 const isDraft = f => f.startsWith('99_작업중/');
 /* 화면에는 확장자를 내보내지 않는다. */
@@ -320,11 +320,9 @@ function loadPresets(){
    쓸 때는 '링크를 열고 지시문을 복사한다' 한 동작이라 한 화면에 모은다.
 
    지시문의 정본은 04_생성기/ 다. 여기서는 읽어 와서 펼칠 뿐 따로 갖고 있지 않는다. */
-const genSide = f => /이미지/.test(f) ? 'img' : 'bot';
-function drawGen(side){
-  const gems = S.links.filter(r => r['분류']==='생성 도구'
-    && (side==='img' ? /\/이미지\// : /\/챗봇\//).test(r._file));
-  const docs = S.files.filter(f => f.startsWith('04_생성기/') && !isChore(f) && genSide(f)===side).sort();
+function drawGen(){
+  const gems = S.links.filter(r => r['분류']==='생성 도구' && /\/이미지\//.test(r._file));
+  const docs = S.files.filter(f => f.startsWith('04_생성기/') && !isChore(f) && /이미지/.test(f)).sort();
 
   $('#main').innerHTML =
     (gems.length ? `<div class="gemrow">${gems.map(x=>`
@@ -356,11 +354,11 @@ async function post(url, body){
     body:JSON.stringify(body)});
   return r;
 }
-/* 서버가 아는 갈래는 이미지·챗봇 둘뿐이다. 파츠 종류는 전부 이미지 쪽에 떨어진다. */
-const SIDE = k => k==='bot' ? 'bot' : 'img';
+/* 서버가 아는 갈래는 이미지뿐이다. 파츠 종류는 전부 이미지 쪽에 떨어진다. */
+const SIDE = () => 'img';
 async function saveDraft(name, content, kind){
   if(!name){ toast('이름을 입력하세요', true); return; }
-  const side = SIDE(kind);
+  const side = SIDE();
   try{
     let r = await post('_save', {kind:side, name, content});
     if(r.status===409){

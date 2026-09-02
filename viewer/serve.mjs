@@ -6,8 +6,7 @@
  *
  *   node viewer/serve.mjs [포트]      # 기본 8799 · 저장소 루트에서 실행
  *
- * 쓰기는 99_작업중/<이미지|챗봇>/ 안의 .md 로만 허용한다.
- * 초안은 만들어진 곳(이미지 조립 / 챗봇 작성)을 따라 갈라 둔다. 저장소의 다른 폴더와 같은 규칙.
+ * 쓰기는 99_작업중/이미지/ 안의 .md 로만 허용한다. 저장소의 다른 폴더와 같은 규칙.
  */
 import { createServer } from 'node:http';
 import { readFile, writeFile, readdir, stat, mkdir, unlink } from 'node:fs/promises';
@@ -18,7 +17,7 @@ import { join, extname, resolve, normalize, sep } from 'node:path';
 const ROOT = process.cwd();
 const PORT = Number(process.argv[2]) || 8799;
 const SAVE_DIR = '99_작업중';
-const KINDS = { img: '이미지', bot: '챗봇' };   /* 뷰어의 그룹 키 → 폴더명 */
+const KINDS = { img: '이미지' };   /* 뷰어의 그룹 키 → 폴더명 */
 const IMG_CACHE = resolve(ROOT, 'viewer', '.imgcache');
 /* 작가 태그마다 '이 작가로 뽑으면 이렇게 나온다' 는 견본을 둔다.
    140개를 글자만 보고 고를 수는 없다. 그림체는 눈으로 고르는 것이다. */
@@ -58,11 +57,11 @@ async function readBody(req, res){
   try{ return JSON.parse(raw); }catch{ send(res, 400, 'JSON 파싱 실패'); return null; }
 }
 
-/* 이름 → 99_작업중/<이미지|챗봇>/<이름>.md.
+/* 이름 → 99_작업중/이미지/<이름>.md.
    폴더를 벗어나거나 .md 가 아니면 거부한다. */
 function safeSavePath(kind, name) {
   const sub = KINDS[kind];
-  if (!sub) return { err: '이미지 · 챗봇 중 하나여야 합니다' };
+  if (!sub) return { err: '이미지 갈래여야 합니다' };
   const base = String(name || '').trim().replace(/\.md$/i, '');
   if (!base) return { err: '이름이 비어 있습니다' };
   if (/[\\/]|\.\./.test(base)) return { err: '이름에 / 나 .. 를 쓸 수 없습니다' };
@@ -254,6 +253,6 @@ createServer(async (req, res) => {
     send(res, 500, String(e && e.message || e));
   }
 }).listen(PORT, () => {
-  console.log(`character viewer  http://localhost:${PORT}/viewer/`);
-  console.log(`초안 저장          ${SAVE_DIR}/이미지/  ${SAVE_DIR}/챗봇/  (.md 만)`);
+  console.log(`이미지 뷰어        http://localhost:${PORT}/viewer/`);
+  console.log(`초안 저장          ${SAVE_DIR}/이미지/  (.md 만)`);
 });

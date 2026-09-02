@@ -1223,7 +1223,7 @@ function drawAssemble(host){
 const PAGE = {
   side: 'img',
   tabs: [['dict','사전'],['combo','태그조합'],['final','최종'],['gen','생성기']],
-  views: { dict:drawDict, combo:drawCombo, final:drawFinal, gen:()=>drawGen('img') },
+  views: { dict:drawDict, combo:drawCombo, final:drawFinal, gen:drawGen },
   afterSave(){                      /* 방금 저장한 것이 아래 목록에 바로 보이게 */
     if(S.tab==='combo') draftSection(subGet('combo','style'), '#cdrafts');
     if(S.tab==='final') draftSection('final', '#fdrafts');
