@@ -1,15 +1,11 @@
-# 수집물: 갤러리에서 긁어온 원문. 계속 불어나고 남의 게시물이라 올리지 않는다.
-dcgall/data/
-dcgall/out/
+# 갤러리 수집기. 별도 저장소(AIchatCollector)라 여기서는 추적하지 않는다.
+dcgall/
 
 # macOS
 .DS_Store
 
 # 로컬 설정
 .claude/settings.local.json
-
-# 병행 작업용 워크트리·로컬 설정
-dcgall/.claude/
 
 # 뷰어가 굴리는 임시 그림 캐시. 보존본은 viewer/img/ 이고 그쪽은 커밋한다
 viewer/.imgcache/
